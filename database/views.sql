@@ -554,7 +554,7 @@ begin
   from jsonb_populate_recordset(null::public.shipments, p_rows) x
   where nullif(trim(x.awb_number),'') is not null
   order by trim(x.awb_number);
-  update _imp set awb_number = trim(awb_number);
+  update _imp set awb_number = trim(awb_number) where awb_number is distinct from trim(awb_number);  -- WHERE needed: Supabase API blocks UPDATE without WHERE (safeupdate)
 
   -- before-images for rollback
   insert into public.shipment_versions(import_id, awb_number, old_row)
