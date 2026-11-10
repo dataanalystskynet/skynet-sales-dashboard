@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en-IN" data-theme="navy" data-mode="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SKYNET Sales Intelligence</title>
+  <meta name="description" content="SKYNET EXPRESS INDIA PVT. LTD. – Daily Sales & Business Intelligence Dashboard">
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <script src="js/preload.js"></script>
+</head>
+<body>
+  <!-- ============================ LOGIN ============================ -->
+  <main id="login-screen" class="hidden" aria-label="Login">
+    <section class="login-brand">
+      <div class="label-card"><img src="assets/images/skynet-logo-transparent.png" alt="SKYNET Worldwide Express – The Partnership that delivers"></div>
+      <h1>Daily sales & business intelligence for SKYNET Express India</h1>
+      <p>Bookings, chargeable weight and customer billing across every origin hub and destination country – updated from each booking report you import.</p>
+      <div class="route-line" aria-hidden="true"><span class="dot"></span>DEL<span class="dash"></span>BOM<span class="dash"></span>BLR<span class="dash"></span><span>World</span></div>
+    </section>
+    <section class="login-card">
+      <h2>Sign in</h2>
+      <p class="sub">Use your User ID or registered e-mail.</p>
+      <div id="login-msg" class="notice hidden" role="alert"></div>
+      <form id="login-form" novalidate>
+        <label class="field"><span>User ID / E-mail</span>
+          <span class="input-icon"><i data-lucide="user"></i><input class="input" id="login-id" name="username" autocomplete="username" required></span></label>
+        <label class="field"><span>Password</span>
+          <span class="input-icon"><i data-lucide="lock"></i><input class="input" id="login-pw" name="password" type="password" autocomplete="current-password" required></span></label>
+        <div class="row-between">
+          <label class="check"><input type="checkbox" id="login-remember" checked> Remember me</label>
+          <button type="button" class="link-btn" id="forgot-link">Forgot password?</button>
+        </div>
+        <button class="btn btn-primary" type="submit" id="login-btn"><i data-lucide="log-in"></i>Sign in</button>
+      </form>
+      <div id="demo-hint" class="demo-hint hidden"></div>
+      <div class="login-foot">© SKYNET EXPRESS INDIA PVT. LTD. · Authorised users only</div>
+    </section>
+  </main>
+
+  <!-- ============================ APP ============================ -->
+  <div id="app" class="hidden">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="brand"><a class="brand-label" href="#/" aria-label="Home"><img src="assets/images/skynet-logo-transparent.png" alt="SKYNET Express"></a></div>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-foot"><button class="btn pin" id="pin-btn" title="Keep sidebar open"><i data-lucide="pin"></i><span class="label">Keep menu open</span></button></div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="btn icon-btn hamburger" id="hamburger" aria-label="Open menu"><i data-lucide="menu"></i></button>
+        <div class="page-title"><h1 id="page-title">Dashboard</h1><span class="crumb" id="page-crumb">SKYNET EXPRESS INDIA PVT. LTD.</span></div>
+        <span class="top-spacer"></span>
+        <div class="top-controls">
+          <div class="date-chip" title="Global date filter"><i data-lucide="calendar"></i>
+            <input type="date" id="date-from" aria-label="From date"><span class="muted">–</span><input type="date" id="date-to" aria-label="To date"></div>
+          <select class="select" id="hub-select" aria-label="Origin hub"><option value="">All Hubs</option></select>
+          <div class="rel"><button class="btn icon-btn" id="notif-btn" aria-label="Notifications"><i data-lucide="bell"></i><span class="badge-dot hidden" id="notif-dot"></span></button>
+            <div class="dropdown hidden" id="notif-dd" style="width:340px"></div></div>
+          <div class="rel"><button class="btn icon-btn" id="theme-btn" aria-label="Theme"><i data-lucide="palette"></i></button>
+            <div class="dropdown hidden" id="theme-dd"></div></div>
+          <div class="rel"><button class="user-chip" id="user-btn" aria-label="Profile menu"><span id="user-avatar" class="avatar">S</span>
+            <span class="who"><b id="user-name">User</b><small id="user-role">role</small></span></button>
+            <div class="dropdown hidden" id="user-dd"></div></div>
+        </div>
+      </header>
+      <section class="filterbar" id="filterbar" aria-label="Global filters"></section>
+      <div class="filter-chips" id="filter-chips"></div>
+      <section class="content" id="view" tabindex="-1"></section>
+    </div>
+  </div>
+
+  <div id="boot" style="position:fixed;inset:0;display:grid;place-items:center;color:#8796BE;font-family:sans-serif">Loading SKYNET dashboard…</div>
+  <div id="toasts" role="status" aria-live="polite"></div>
+
+  <!-- Libraries (vendored for GitHub Pages reliability) -->
+  <script src="vendor/supabase.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <script src="vendor/lucide.min.js"></script>
+  <!-- SheetJS: latest secure build from the official CDN, vendored copy as fallback -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="js/xlsx-fallback.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+/* =====================================================================
+   SKYNET EXPRESS – themes.css
+   5 colour themes x 2 modes (dark / light). Applied on <html> as
+   data-theme="navy|crimson|ocean|emerald|graphite"  data-mode="dark|light"
+   ===================================================================== */
+@font-face { font-family: "Archivo"; src: url("../assets/fonts/archivo-var.woff2") format("woff2");
+  font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Archivo"; src: url("../assets/fonts/archivo-var-italic.woff2") format("woff2");
+  font-weight: 100 900; font-style: italic; font-display: swap; }
+
+:root {
+  /* brand constants */
+  --skynet-red: #E32B24;
+  --skynet-red-deep: #B71C17;
+  --signal-blue: #2F7BFF;
+  --white: #FFFFFF;
+
+  /* default = Navy Command, dark */
+  --bg: #07122B;
+  --bg-2: #0C1B3D;
+  --bg-glow-1: rgba(47, 123, 255, .20);
+  --bg-glow-2: rgba(227, 43, 36, .16);
+  --panel: rgba(18, 36, 78, .58);
+  --panel-solid: #11244E;
+  --panel-2: rgba(28, 52, 104, .55);
+  --panel-border: rgba(140, 170, 235, .16);
+  --panel-highlight: rgba(255, 255, 255, .07);
+  --text: #F2F5FF;
+  --text-2: #C3CDE8;
+  --muted: #8796BE;
+  --accent: var(--skynet-red);
+  --accent-2: var(--signal-blue);
+  --accent-contrast: #FFFFFF;
+  --good: #2FCB8A;
+  --bad: #FF5A52;
+  --warn: #F5B841;
+  --grid: rgba(140, 170, 235, .10);
+  --input-bg: rgba(7, 18, 43, .55);
+  --shadow-1: 0 1px 0 rgba(255,255,255,.06) inset, 0 10px 30px -12px rgba(0, 0, 0, .65);
+  --shadow-3d: 0 1px 0 rgba(255,255,255,.08) inset, 0 -1px 0 rgba(0,0,0,.35) inset,
+               0 18px 38px -18px rgba(0, 0, 0, .85), 0 6px 14px -8px rgba(0,0,0,.55);
+  --sidebar-bg: linear-gradient(185deg, #0A1836 0%, #07122B 60%, #060F24 100%);
+  --logo-filter: none;
+  --watermark-opacity: .045;
+
+  /* chart palette (categorical) */
+  --c1: #E8453C; --c2: #3D8BFF; --c3: #F5B841; --c4: #2EC4B6;
+  --c5: #9B7BFF; --c6: #5BC0EB; --c7: #FF8A5B; --c8: #A3D65C;
+  color-scheme: dark;
+}
+
+/* ---------- Theme variations (dark) ---------- */
+[data-theme="crimson"] {
+  --bg: #12070B; --bg-2: #1E0B12;
+  --bg-glow-1: rgba(227, 43, 36, .26); --bg-glow-2: rgba(255, 140, 90, .10);
+  --panel: rgba(52, 16, 26, .58); --panel-solid: #2A0E16; --panel-2: rgba(70, 22, 34, .5);
+  --panel-border: rgba(255, 150, 150, .14);
+  --text-2: #E9CDD1; --muted: #B48C94;
+  --accent-2: #FF8A5B; --grid: rgba(255, 150, 150, .09);
+  --input-bg: rgba(18, 7, 11, .6);
+  --sidebar-bg: linear-gradient(185deg, #22090F 0%, #12070B 100%);
+  --c2: #FFB341; --c6: #FF8FA3;
+}
+[data-theme="ocean"] {
+  --bg: #031925; --bg-2: #062636;
+  --bg-glow-1: rgba(0, 190, 220, .20); --bg-glow-2: rgba(47, 123, 255, .18);
+  --panel: rgba(8, 52, 72, .56); --panel-solid: #0A3346; --panel-2: rgba(10, 66, 90, .5);
+  --panel-border: rgba(120, 220, 240, .15);
+  --text-2: #C2E2EC; --muted: #7FA9B9;
+  --accent-2: #18C3E0; --grid: rgba(120, 220, 240, .09);
+  --input-bg: rgba(3, 25, 37, .6);
+  --sidebar-bg: linear-gradient(185deg, #052231 0%, #031925 100%);
+}
+[data-theme="emerald"] {
+  --bg: #04160F; --bg-2: #072117;
+  --bg-glow-1: rgba(47, 203, 138, .18); --bg-glow-2: rgba(227, 43, 36, .12);
+  --panel: rgba(10, 54, 38, .56); --panel-solid: #0B3324; --panel-2: rgba(14, 70, 50, .5);
+  --panel-border: rgba(130, 230, 180, .14);
+  --text-2: #C6E6D6; --muted: #81AE98;
+  --accent-2: #2FCB8A; --grid: rgba(130, 230, 180, .09);
+  --input-bg: rgba(4, 22, 15, .6);
+  --sidebar-bg: linear-gradient(185deg, #062019 0%, #04160F 100%);
+  --c4: #5BC0EB;
+}
+[data-theme="graphite"] {
+  --bg: #121417; --bg-2: #1A1D22;
+  --bg-glow-1: rgba(160, 170, 190, .10); --bg-glow-2: rgba(227, 43, 36, .12);
+  --panel: rgba(38, 42, 50, .62); --panel-solid: #24272E; --panel-2: rgba(52, 57, 66, .55);
+  --panel-border: rgba(200, 210, 225, .12);
+  --text-2: #D0D4DC; --muted: #8F96A3;
+  --accent-2: #8FA8D8; --grid: rgba(200, 210, 225, .08);
+  --input-bg: rgba(18, 20, 23, .6);
+  --sidebar-bg: linear-gradient(185deg, #1B1E23 0%, #121417 100%);
+}
+
+/* ---------- Light mode (shared) + per-theme tints ---------- */
+[data-mode="light"] {
+  --bg: #EEF2FA; --bg-2: #E3E9F6;
+  --bg-glow-1: rgba(47, 123, 255, .12); --bg-glow-2: rgba(227, 43, 36, .08);
+  --panel: rgba(255, 255, 255, .78); --panel-solid: #FFFFFF; --panel-2: rgba(241, 245, 252, .9);
+  --panel-border: rgba(20, 40, 90, .12); --panel-highlight: rgba(255,255,255,.9);
+  --text: #0B1A3A; --text-2: #2C3E66; --muted: #5F6F92;
+  --grid: rgba(20, 40, 90, .08);
+  --input-bg: #FFFFFF;
+  --shadow-1: 0 1px 0 rgba(255,255,255,.9) inset, 0 10px 26px -14px rgba(20, 40, 90, .35);
+  --shadow-3d: 0 1px 0 rgba(255,255,255,1) inset, 0 -1px 0 rgba(20,40,90,.06) inset,
+               0 18px 34px -18px rgba(20, 40, 90, .45), 0 4px 10px -6px rgba(20,40,90,.25);
+  --sidebar-bg: linear-gradient(185deg, #0B1A3A 0%, #07122B 100%);
+  --watermark-opacity: .06;
+  --c3: #D99A12; --c8: #6FA82E;
+  color-scheme: light;
+}
+[data-mode="light"][data-theme="crimson"]  { --bg: #FAF0F1; --bg-2: #F3E2E5; --text: #2A0B12; --text-2: #5A2A33; --muted: #8E5F68; --sidebar-bg: linear-gradient(185deg,#3A0C16,#22070D); }
+[data-mode="light"][data-theme="ocean"]    { --bg: #EAF5F9; --bg-2: #DCEEF5; --text: #052535; --text-2: #1E4B5E; --muted: #4F7889; --sidebar-bg: linear-gradient(185deg,#06303F,#031925); }
+[data-mode="light"][data-theme="emerald"]  { --bg: #ECF6F1; --bg-2: #DDEFE6; --text: #062317; --text-2: #1F4A37; --muted: #507A66; --sidebar-bg: linear-gradient(185deg,#08301F,#04160F); }
+[data-mode="light"][data-theme="graphite"] { --bg: #F1F2F4; --bg-2: #E5E7EB; --text: #15181D; --text-2: #3A404A; --muted: #6A717D; --sidebar-bg: linear-gradient(185deg,#24272E,#121417); }
