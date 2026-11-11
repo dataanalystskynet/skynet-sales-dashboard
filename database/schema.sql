@@ -46,6 +46,17 @@ create table if not exists public.profiles (
   constraint username_format check (username is null or username ~ '^[a-z0-9._-]{3,40}$')
 );
 
+-- Login by mobile number: one mobile = one user (several users may share an e-mail)
+create or replace function public.mobile_key(m text) returns text
+language sql immutable set search_path = public as $$
+  select nullif(right(regexp_replace(coalesce(m,''), '\D', '', 'g'), 10), '') $$;
+-- Salesperson names compared without case / extra spaces ("abhilash " = "ABHILASH")
+create or replace function public.sp_key(x text) returns text
+language sql immutable set search_path = public as $$
+  select nullif(upper(btrim(regexp_replace(coalesce(x,''), '\s+', ' ', 'g'))), '') $$;
+create unique index if not exists profiles_mobile_key_uq on public.profiles (public.mobile_key(mobile))
+  where public.mobile_key(mobile) is not null;
+
 -- ---------------------------------------------------------------------
 -- 2. USER PERMISSIONS  (overrides on top of role defaults)
 -- ---------------------------------------------------------------------

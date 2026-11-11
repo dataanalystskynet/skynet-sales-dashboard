@@ -71,6 +71,7 @@ begin
   elsif sc = 'assigned' then v_hubs := p.assigned_hubs; v_sales := p.team_salespersons || p.salesperson_names;
   elsif sc = 'own' then v_sales := p.salesperson_names;
   else return; end if;
+  v_sales := array(select public.sp_key(x) from unnest(v_sales) x where public.sp_key(x) is not null);
   v_rev := public.perm_allows('revenue_visibility');
   v_wt  := public.perm_allows('weight_visibility');
   if v_hold not in ('YES','NO') then v_hold := null; end if;
@@ -84,7 +85,7 @@ begin
          case when v_rev then s.customer_grand_total end,
          s.salesperson_name, s.origin_hub_code, s.is_hold
   from public.shipments s
-  where (v_all or s.origin_hub_code = any(v_hubs) or s.salesperson_name = any(v_sales))
+  where (v_all or s.origin_hub_code = any(v_hubs) or public.sp_key(s.salesperson_name) = any(v_sales))
     and (v_from is null or s.booking_date >= v_from)
     and (v_to   is null or s.booking_date <= v_to)
     and (v_hub is null or s.origin_hub_code = v_hub)
@@ -140,13 +141,22 @@ $$;
 -- Username ("User ID") -> e-mail for login. Callable by anon.
 create or replace function public.email_for_login(p_login text) returns text
 language plpgsql stable security definer set search_path = public as $$
-declare v text;
+declare v text; d text;
 begin
   if p_login is null or position('@' in p_login) > 0 then return p_login; end if;
+  -- 1) mobile number (10 digits; +91 / spaces / dashes ignored) -> that user's own login e-mail
+  d := regexp_replace(p_login, '\D', '', 'g');
+  if d <> '' and length(d) >= 10 and p_login ~ '^[\s+0-9()-]+$' then
+    select u.email into v from public.profiles p join auth.users u on u.id = p.id
+     where public.mobile_key(p.mobile) = public.mobile_key(d) and p.is_active;
+    if v is not null then return v; end if;
+  end if;
+  -- 2) User ID
   if coalesce((select value::text from public.app_settings where key = 'allow_username_login'),'true') <> 'true' then
     return null;
   end if;
-  select email into v from public.profiles where username = lower(trim(p_login)) and is_active;
+  select u.email into v from public.profiles p join auth.users u on u.id = p.id
+   where p.username = lower(trim(p_login)) and p.is_active;
   return v;
 end $$;
 
@@ -750,6 +760,12 @@ begin
     raise exception 'You cannot change your own role or deactivate yourself' using errcode = '42501';
   end if;
   if p ? 'role' and p->>'role' not in ('admin','manager','sales') then raise exception 'Invalid role'; end if;
+  if p ? 'mobile' and nullif(trim(p->>'mobile'),'') is not null then
+    if length(coalesce(public.mobile_key(p->>'mobile'),'')) <> 10 then raise exception 'Enter a valid 10-digit mobile number'; end if;
+    if exists (select 1 from public.profiles x where x.id <> p_id and public.mobile_key(x.mobile) = public.mobile_key(p->>'mobile')) then
+      raise exception 'This mobile number is already used by another user';
+    end if;
+  end if;
 
   update public.profiles set
     full_name         = coalesce(left(p->>'full_name',120), full_name),

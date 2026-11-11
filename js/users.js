@@ -22,7 +22,7 @@ export async function render(root) {
       <select class="select" id="u-role" style="width:170px"><option value="">All roles</option><option value="admin">Admin</option><option value="manager">Manager</option><option value="sales">Sales</option></select></div><div id="u-tbl"></div>` });
   const draw = () => {
     const q = root.querySelector('#u-q').value.toLowerCase(), role = root.querySelector('#u-role').value;
-    const list = users.filter((u) => (!role || u.role === role) && (!q || [u.full_name, u.username, u.email].some((x) => (x || '').toLowerCase().includes(q))));
+    const list = users.filter((u) => (!role || u.role === role) && (!q || [u.full_name, u.username, u.email, u.mobile].some((x) => (x || '').toLowerCase().includes(q))));
     setHTML(root.querySelector('#u-tbl'), list.length ? html`<div class="table-wrap"><table class="data responsive"><thead><tr><th>Name</th><th>User ID</th><th>E-mail</th><th>Mobile</th><th>Role</th><th>Hubs</th><th>Salesperson mapping</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>
       ${list.map((u) => html`<tr><td data-label="Name"><b>${u.full_name || '—'}</b></td><td data-label="User ID">${u.username || '—'}</td><td data-label="E-mail">${u.email || '—'}</td><td data-label="Mobile">${u.mobile || '—'}</td>
         <td data-label="Role"><span class="badge info" style="text-transform:capitalize">${u.role}</span></td><td data-label="Hubs">${(u.assigned_hubs || []).join(', ') || '—'}</td>
@@ -60,16 +60,16 @@ function userForm(u, onDone) {
   const m = modal({ title: isNew ? 'Add user' : 'Edit user – ' + (u.full_name || u.email), wide: true,
     body: `<div class="grid g-3">
         <label class="field"><span>Full name *</span><input class="input" id="f-name" value="${esc(u.full_name)}" maxlength="120"></label>
-        <label class="field"><span>User ID (for login)</span><input class="input" id="f-user" value="${esc(u.username || '')}" placeholder="e.g. muskan" maxlength="40"></label>
-        <label class="field"><span>E-mail address *</span><input class="input" id="f-email" type="email" value="${esc(u.email || '')}" ${isNew ? '' : 'disabled title="Users change their own e-mail from My Profile"'}></label>
-        <label class="field"><span>Mobile number</span><input class="input" id="f-mobile" value="${esc(u.mobile || '')}" maxlength="15" inputmode="tel"></label>
+        <label class="field"><span>Mobile number * (login ID)</span><input class="input" id="f-mobile" value="${esc(u.mobile || '')}" maxlength="15" inputmode="tel" placeholder="10-digit mobile"></label>
+        <label class="field"><span>E-mail address${isNew ? ' (optional – can be shared)' : ''}</span><input class="input" id="f-email" type="email" value="${esc(u.email || '')}" ${isNew ? '' : 'disabled title="Contact e-mail – set when the user was created"'}></label>
+        <label class="field"><span>User ID (optional)</span><input class="input" id="f-user" value="${esc(u.username || '')}" placeholder="e.g. muskan" maxlength="40"></label>
         <label class="field"><span>Role *</span><select class="select" id="f-role" ${!isAdmin() && u.role === 'admin' ? 'disabled' : ''}>
           ${['sales', 'manager', 'admin'].filter((r) => isAdmin() || r !== 'admin').map((r) => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r === 'admin' ? 'Super Admin / Admin' : r[0].toUpperCase() + r.slice(1)}</option>`).join('')}</select></label>
         <label class="field"><span>Status</span><select class="select" id="f-active"><option value="1" ${u.is_active ? 'selected' : ''}>Active</option><option value="0" ${u.is_active ? '' : 'selected'}>Inactive</option></select></label>
       </div>
       ${isNew ? `<div class="grid g-2"><div class="field"><span style="font-size:12.5px;color:var(--text-2)">Login setup</span>
-          <div class="seg" id="f-mode"><button type="button" class="on" data-v="invite">Send secure invitation e-mail</button><button type="button" data-v="password">Set initial password</button></div></div>
-          <label class="field hidden" id="f-pw-wrap"><span>Initial password (min 8, letters + numbers)</span><input class="input" id="f-pw" type="password" autocomplete="new-password"></label></div>` : ''}
+          <div class="seg" id="f-mode"><button type="button" class="on" data-v="password">Set initial password</button><button type="button" data-v="invite">Send invitation e-mail</button></div></div>
+          <label class="field" id="f-pw-wrap"><span>Initial password (min 8, letters + numbers)</span><input class="input" id="f-pw" type="password" autocomplete="new-password"></label></div>` : ''}
       <div class="section-title">Data mapping</div>
       <div class="grid g-3">
         <div><span style="font-size:12.5px;color:var(--text-2)">Assigned hub(s) – manager hub scope</span>${checkList('hubs', lookups.hubs, u.assigned_hubs || [], 'Filter hubs')}</div>
@@ -87,7 +87,7 @@ function userForm(u, onDone) {
     const q = inp.value.toLowerCase(); m.querySelectorAll(`[data-list="${inp.dataset.filter}"] label`).forEach((l) => { l.style.display = l.textContent.toLowerCase().includes(q) ? 'flex' : 'none'; });
   }));
   m.querySelector('#f-role').addEventListener('change', (e) => { u.permission_overrides = collectPerms(m); setHTML(m.querySelector('#f-perms'), raw(permRow(e.target.value))); });
-  let mode = 'invite';
+  let mode = 'password';
   m.querySelector('#f-mode')?.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.v;
     m.querySelectorAll('#f-mode button').forEach((x) => x.classList.toggle('on', x === b)); m.querySelector('#f-pw-wrap').classList.toggle('hidden', mode !== 'password'); });
   m.querySelector('#f-setpw')?.addEventListener('click', () => setPassword(u));
@@ -102,16 +102,19 @@ function userForm(u, onDone) {
     const perms = collectPerms(m);
     if (!p.full_name) return toast('Full name is required.', 'err');
     if (p.username && !/^[a-z0-9._-]{3,40}$/.test(p.username)) return toast('User ID: 3–40 characters, letters, numbers, dot, dash or underscore.', 'err');
-    if (p.mobile && !/^[+0-9 -]{7,15}$/.test(p.mobile)) return toast('Enter a valid mobile number.', 'err');
+    const mob = p.mobile.replace(/\D/g, '').slice(-10);
+    if (mob.length !== 10 || !/^[+0-9 ()-]{10,15}$/.test(p.mobile)) return toast('Enter a valid 10-digit mobile number – users sign in with it.', 'err');
+    p.mobile = mob;
     if (p.role === 'sales' && !p.salesperson_names.length) toast('Note: a SALES user without a salesperson mapping sees no shipment data.', 'info', 6000);
     try {
       if (isNew) {
         const email = m.querySelector('#f-email').value.trim();
-        if (!/^\S+@\S+\.\S+$/.test(email)) return toast('Enter a valid e-mail address.', 'err');
+        if (email && !/^\S+@\S+\.\S+$/.test(email)) return toast('Enter a valid e-mail address (or leave it empty).', 'err');
+        if (mode === 'invite' && !email) return toast('An invitation needs an e-mail address – or choose "Set initial password".', 'err');
         const password = mode === 'password' ? m.querySelector('#f-pw').value : null;
         if (mode === 'password' && (!password || password.length < 8 || !/\d/.test(password) || !/[A-Za-z]/.test(password))) return toast('Password: min 8 characters with letters and numbers.', 'err');
         await invokeAdmin('create', { email, password, invite: mode === 'invite', redirect_to: location.origin + location.pathname, ...p, permissions: perms });
-        toast(mode === 'invite' ? `Invitation sent to ${email}.` : 'User created.', 'ok');
+        toast(mode === 'invite' ? `Invitation sent to ${email}.` : `User created – signs in with mobile ${p.mobile} and the password you set.`, 'ok', 7000);
       } else {
         await rpc('admin_update_user', { p_id: u.id, p, p_perms: perms });
         if (u.is_active !== p.is_active) { try { await invokeAdmin('set_active', { user_id: u.id, is_active: p.is_active }); } catch (_) { /* profile flag already blocks access */ } }

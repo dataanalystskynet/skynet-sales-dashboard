@@ -78,8 +78,8 @@ function face(color, horiz) {
   };
 }
 /** Bars grow from the bottom (left for horizontal) one after another */
-const growAnim = { duration: 900, easing: 'easeOutQuart',
-  delay: (ctx) => (ctx.type === 'data' && ctx.mode === 'default' ? ctx.dataIndex * 22 + ctx.datasetIndex * 60 : 0) };
+const growAnim = { duration: 1800, easing: 'easeOutCubic',
+  delay: (ctx) => (ctx.type === 'data' && ctx.mode === 'default' ? Math.min(ctx.dataIndex * 55, 1300) + ctx.datasetIndex * 120 : 0) };
 const pad3d = { padding: { top: 12, right: 12 } };
 
 /** Re-play the 3D grow animation when the cursor enters a bar chart */
@@ -87,7 +87,7 @@ function replayOnHover(ch) {
   const cv = ch.canvas; let last = 0;
   cv.addEventListener('mouseenter', () => {
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const now = Date.now(); if (now - last < 1800) return; last = now;
+    const now = Date.now(); if (now - last < 3500) return; last = now;
     ch.reset(); ch.update();
   });
 }
@@ -96,7 +96,7 @@ function spinOnHover(ch) {
   const cv = ch.canvas; let busy = false;
   cv.addEventListener('mouseenter', () => {
     if (busy || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
-    busy = true; const t0 = performance.now(), ms = 1300, start = ch.options.rotation || 0;
+    busy = true; const t0 = performance.now(), ms = 2800, start = ch.options.rotation || 0;
     const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
     const step = (t) => {
       if (!ch.canvas) { busy = false; return; }
@@ -286,7 +286,7 @@ export function donutChart(canvas, { labels, data, colors, kind = 'int', title, 
     data: { labels, datasets: [{ data, backgroundColor: (ctx) => { const cs = colors || p; return face3dArc(cs[ctx.dataIndex % cs.length])(ctx); }, _c3d: colors || p, borderColor: cssVar('--panel-solid'), borderWidth: 2, hoverOffset: 14 }] },
     options: {
       cutout: '62%', layout: { padding: { bottom: DONUT_DEPTH + 4, top: 6 } },
-      animation: { animateRotate: true, animateScale: true, duration: 1100, easing: 'easeOutBack' },
+      animation: { animateRotate: true, animateScale: true, duration: 2000, easing: 'easeOutCubic' },
       plugins: {
         legend: { position: 'bottom' },
         centerText: { title, sub },

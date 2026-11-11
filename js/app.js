@@ -56,8 +56,8 @@ function showLogin() {
   if (isDemo()) {
     const h = $('#demo-hint'); h.classList.remove('hidden');
     setHTML(h, html`<b>Demo mode</b> – synthetic data, nothing is saved to Supabase.<br>
-      Admin: <code>admin@demo.in</code> · Manager: <code>manager@demo.in</code> · Sales: <code>sales@demo.in</code><br>Password for all: <code>Demo@123</code>`);
-    if (!$('#login-id').value) { $('#login-id').value = 'admin@demo.in'; $('#login-pw').value = 'Demo@123'; }
+      Mobile – Admin: <code>9800000001</code> · Manager: <code>9800000002</code> · Sales: <code>9800000003</code><br>Password for all: <code>Demo@123</code>`);
+    if (!$('#login-id').value) { $('#login-id').value = '9800000001'; $('#login-pw').value = 'Demo@123'; }
   }
   $('#forgot-link').onclick = () => auth.showForgotPassword($('#login-id').value);
   $('#login-form').onsubmit = async (e) => {

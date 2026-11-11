@@ -192,7 +192,8 @@ const RPC = {
     return { profile: { ...p }, permissions, scope: dataScope(), server_time: new Date().toISOString() };
   },
   touch_last_login() { const p = me(); if (p) p.last_login_at = new Date().toISOString(); },
-  email_for_login({ p_login }) { if (p_login.includes('@')) return p_login; return DB.profiles.find((p) => p.username === p_login.toLowerCase().trim() && p.is_active)?.email || null; },
+  email_for_login({ p_login }) { if (p_login.includes('@')) return p_login; const d = p_login.replace(/\D/g, '').slice(-10);
+    return DB.profiles.find((p) => p.is_active && ((d.length === 10 && String(p.mobile || '').replace(/\D/g, '').slice(-10) === d) || p.username === p_login.toLowerCase().trim()))?.email || null; },
 
   get_filter_options() {
     assertActive(); const s = scoped({});

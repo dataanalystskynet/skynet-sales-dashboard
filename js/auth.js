@@ -13,16 +13,16 @@ export async function getSession() {
 
 export async function signIn(login, password, remember) {
   login = String(login || '').trim();
-  if (!login || !password) throw new Error('Enter your User ID / e-mail and password.');
+  if (!login || !password) throw new Error('Enter your mobile number and password.');
   setRemember(!!remember);
   let email = login;
   if (!login.includes('@')) {
     const { data, error } = await sb().rpc('email_for_login', { p_login: login });
-    if (error || !data) throw new Error('Invalid login credentials');
+    if (error || !data) throw new Error(/^[\s+0-9()-]+$/.test(login) ? 'This mobile number is not registered or the account is inactive. Please contact your admin.' : 'Invalid login credentials');
     email = data;
   }
   const { data, error } = await sb().auth.signInWithPassword({ email, password });
-  if (error) throw new Error(/invalid/i.test(error.message) ? 'Invalid login credentials' : error.message);
+  if (error) throw new Error(/invalid/i.test(error.message) ? 'Wrong mobile number or password.' : error.message);
   try { await rpc('touch_last_login', {}, { silent: true }); } catch (_) { /* non-blocking */ }
   return data.session;
 }
@@ -85,7 +85,8 @@ function showSetNewPassword() {
 export function showForgotPassword(prefill = '') {
   const m = modal({
     title: 'Forgot password',
-    body: `<p class="muted">Enter your registered e-mail. We will send a secure reset link.</p>
+    body: `<p class="muted">Signing in with a mobile number? Ask your admin to set a new password for you (User Management → Set password).</p>
+      <p class="muted">If you have your own registered e-mail, enter it below and we will send a secure reset link.</p>
       <label class="field"><span>E-mail address</span><input class="input" type="email" id="fp-email" value="${esc(prefill.includes('@') ? prefill : '')}" autocomplete="email"></label>`,
     foot: `<button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="fp-send">Send reset link</button>`,
   });

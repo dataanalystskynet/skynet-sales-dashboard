@@ -97,11 +97,11 @@ begin
   if sc = 'all' then return true; end if;
   if sc = 'assigned' then
     return (p_hub is not null and p_hub = any(p.assigned_hubs))
-        or (p_salesperson is not null and (p_salesperson = any(p.team_salespersons)
-                                        or p_salesperson = any(p.salesperson_names)));
+        or (p_salesperson is not null and public.sp_key(p_salesperson) in
+              (select public.sp_key(x) from unnest(p.team_salespersons || p.salesperson_names) x));
   end if;
   if sc = 'own' then
-    return p_salesperson is not null and p_salesperson = any(p.salesperson_names);
+    return p_salesperson is not null and public.sp_key(p_salesperson) in (select public.sp_key(x) from unnest(p.salesperson_names) x);
   end if;
   return false;
 end $$;

@@ -2,6 +2,7 @@
 // SKYNET EXPRESS – dashboard.js : PAGE 1 – Executive Dashboard
 // =====================================================================
 import { rpc } from './api.js';
+import { getContext, profile } from './permissions.js';
 import { comboChart, lineChart, barChart, donutChart, palette } from './charts.js';
 import { kpiCard, setKpi, TONES, panel, chartBox, seg, bindSeg, skeleton, rangeLabel, prevLabel } from './ui.js';
 import { inr, inrShort, int, kg, kgShort, growth, trendHtml, rollup, dmy, shortDay, monLabel, isNil, n, esc, html, raw, setHTML, pct, share, emptyState, parseISO } from './utils.js';
@@ -15,7 +16,22 @@ export async function render(root, { filters, isStale }) {
   const revAwb = k.awb && !isNil(k.revenue) ? k.revenue / k.awb : null;
   const revKg = !isNil(k.revenue) && n(k.weight) > 0 ? k.revenue / k.weight : null;
 
-  root.innerHTML = `
+  const own = getContext().scope === 'own';   // SALES user: sees only shipments booked under his/her own salesperson name
+  const myNames = (profile().salesperson_names || []).join(', ');
+  const top10 = d.top_customers.by_revenue || [];
+  const top10Rev = top10.reduce((a, x) => a + n(x.rev), 0);
+  const ownBanner = !own ? '' : `<section class="panel my-scope mt-0"><div class="my-scope-in">
+      <span class="my-scope-ic"><i data-lucide="user-round-check"></i></span>
+      <div><b>My customers only</b><span>Salesperson: ${esc(myNames || 'not mapped – ask your admin to link your SALES PERSON name')}</span></div>
+      <div class="my-scope-stat"><b>${int(k.customers)}</b><span>My customers</span></div>
+      <div class="my-scope-stat"><b>${int(Math.min(10, top10.length))}</b><span>In my top 10</span></div>
+      <div class="my-scope-stat"><b>${isNil(k.revenue) ? int(top10.reduce((a, x) => a + n(x.awb), 0)) + ' AWB' : (n(k.revenue) ? share((top10Rev / n(k.revenue)) * 100) : '—')}</b><span>${isNil(k.revenue) ? 'Top 10 bookings' : 'Top 10 share of my revenue'}</span></div>
+    </div></section>`;
+  const myTable = () => `<div class="table-wrap"><table class="data"><thead><tr><th>#</th><th>Customer</th><th class="right">AWB</th><th class="right">Weight</th><th class="right">Revenue</th><th class="right">Share</th></tr></thead><tbody>
+      ${top10.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.name || x.code)}</b><br><span class="muted" style="font-size:11.5px">${esc(x.code || '')}</span></td><td class="right num">${int(x.awb)}</td><td class="right num">${isNil(x.wt) ? '—' : kgShort(x.wt)}</td><td class="right num">${isNil(x.rev) ? '—' : inr(x.rev)}</td><td class="right num">${isNil(x.rev) || !n(k.revenue) ? '—' : share((n(x.rev) / n(k.revenue)) * 100)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No bookings under your name in this period.</td></tr>'}
+    </tbody></table></div>`;
+
+  root.innerHTML = `${ownBanner}
     <div class="kpi-grid">
       ${kpiCard({ id: 'awb', label: 'Total AWB bookings', icon: 'package', tone: TONES.red })}
       ${kpiCard({ id: 'wt', label: 'Total chargeable weight', icon: 'weight', tone: TONES.blue })}
@@ -42,8 +58,9 @@ export async function render(root, { filters, isStale }) {
       ${panel({ title: 'Current vs previous period', sub: 'Day-by-day comparison of equal-length periods', tools: seg('cmp', [['rev', 'Revenue'], ['awb', 'AWB'], ['wt', 'Weight']], 'rev'), body: chartBox('ch-cmp') })}
     </div>
     <div class="grid g-2 mt">
-      ${panel({ title: 'Top 10 customers', tools: seg('tc', [['by_revenue', 'Revenue'], ['by_awb', 'Shipments'], ['by_weight', 'Weight']], 'by_revenue'), body: chartBox('ch-tc', 'tall') })}
-      ${panel({ title: 'Top 10 salespersons', tools: seg('ts', [['by_revenue', 'Revenue'], ['by_awb', 'AWB'], ['by_weight', 'Weight']], 'by_revenue'), body: chartBox('ch-ts', 'tall') })}
+      ${panel({ title: own ? 'My top 10 customers' : 'Top 10 customers', sub: own ? `${int(Math.min(10, top10.length))} of my ${int(k.customers)} customers` : '', tools: seg('tc', [['by_revenue', 'Revenue'], ['by_awb', 'Shipments'], ['by_weight', 'Weight']], 'by_revenue'), body: chartBox('ch-tc', 'tall') })}
+      ${own ? panel({ title: 'My top 10 customers – details', sub: 'Ranked by revenue · share of my total', body: myTable() })
+            : panel({ title: 'Top 10 salespersons', tools: seg('ts', [['by_revenue', 'Revenue'], ['by_awb', 'AWB'], ['by_weight', 'Weight']], 'by_revenue'), body: chartBox('ch-ts', 'tall') })}
     </div>
     <div class="grid g-2 mt">
       ${panel({ title: 'Business insights', sub: 'Calculated from the filtered data', body: '<div id="insights"></div>' })}
@@ -122,7 +139,7 @@ export async function render(root, { filters, isStale }) {
     barChart(root.querySelector(canvasId), { horizontal: true, kind, labels: list.map(nameFn), series: [{ label: lbl, data: list.map((x) => x[mk]), color }] }); };
   const tc = (key) => drawTop('#ch-tc', d.top_customers[key], key, (x) => x.name || x.code, palette()[1]);
   const ts = (key) => drawTop('#ch-ts', d.top_sales[key], key, (x) => x.name, palette()[0]);
-  tc('by_revenue'); bindSeg(root, 'tc', tc); ts('by_revenue'); bindSeg(root, 'ts', ts);
+  tc('by_revenue'); bindSeg(root, 'tc', tc); if (!own) { ts('by_revenue'); bindSeg(root, 'ts', ts); }
 
   // Insights
   const best = (arr, key) => arr.reduce((b, x) => (isNil(x[key]) ? b : !b || x[key] > b[key] ? x : b), null);
