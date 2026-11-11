@@ -1,0 +1,194 @@
+/* =====================================================================
+   SKYNET EXPRESS – fx3d.css
+   3D look & motion layer: transparent responsive logo, customer combobox,
+   gradient 3D KPI cards, 3D panels, page/scroll reveal animations.
+   Loaded after style.css / responsive.css. Respects reduced motion.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------- LOGO
+   Transparent logo everywhere (no white box), scaled to the space it has. */
+.sidebar .brand { height: auto; min-height: 76px; padding: 14px 10px 10px; justify-content: center; }
+.sidebar .brand .brand-label {
+  background: transparent; box-shadow: none; padding: 0; border-radius: 0;
+  width: 56px; height: auto; overflow: visible; justify-content: center;
+  transition: width .22s cubic-bezier(.2,.8,.2,1), transform .3s;
+}
+.sidebar .brand img {
+  width: 100%; height: auto; max-width: 100%; object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.45)) drop-shadow(0 0 1px rgba(255,255,255,.25));
+}
+.sidebar.expanded .brand .brand-label, .sidebar.pinned .brand .brand-label { width: min(224px, 100%); }
+.sidebar .brand .brand-label:hover { transform: perspective(500px) rotateY(-8deg) scale(1.03); }
+
+.login-brand .label-card {
+  background: transparent; box-shadow: none; padding: 0; border-radius: 0; transform: none;
+  animation: logoFloat 6s ease-in-out infinite;
+}
+.login-brand .label-card img {
+  width: clamp(220px, 32vw, 460px); height: auto;
+  filter: drop-shadow(0 18px 26px rgba(0,0,0,.45)) drop-shadow(0 0 1px rgba(255,255,255,.35));
+}
+@keyframes logoFloat {
+  0%, 100% { transform: perspective(900px) rotateX(6deg) rotateY(-8deg) translateY(0); }
+  50%      { transform: perspective(900px) rotateX(2deg) rotateY(6deg) translateY(-8px); }
+}
+@media (max-width: 760px) {
+  .sidebar .brand .brand-label { width: min(210px, 100%); }
+  .login-brand .label-card img { width: min(78vw, 320px); }
+}
+
+/* ---------------------------------------------------------- COMBOBOX */
+.combo { position: relative; }
+.combo .input { padding-right: 34px; }
+.combo-caret { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); cursor: pointer; }
+.combo-pop {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 60;
+  width: max(100%, 420px); max-width: min(560px, calc(100vw - 32px));
+  background: var(--panel-solid); border: 1px solid var(--panel-border); border-radius: 14px;
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.04) inset;
+  overflow: hidden; transform-origin: top center; animation: comboIn .18s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes comboIn { from { opacity: 0; transform: perspective(700px) rotateX(-14deg) translateY(-6px); } }
+.combo-head, .combo-foot { display: flex; justify-content: space-between; gap: 12px; padding: 8px 14px; font-size: 11.5px; }
+.combo-head { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--panel-border); }
+.combo-foot { border-top: 1px solid var(--panel-border); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text-2); font-size: 12.5px; }
+.combo-foot b { color: var(--text); }
+.combo-body { max-height: 300px; overflow-y: auto; scrollbar-width: thin; }
+.combo-opt { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 14px; cursor: pointer; transition: background .12s, transform .12s; }
+.combo-opt:hover, .combo-opt.on { background: color-mix(in srgb, var(--accent-2) 18%, transparent); transform: translateX(3px); }
+.co-name { display: flex; flex-direction: column; min-width: 0; }
+.co-name b { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.co-name small { color: var(--muted); font-size: 11.5px; }
+.co-total { font-weight: 700; font-size: 13px; color: var(--text); flex: none; }
+.combo-empty { padding: 10px 14px; color: var(--muted); font-size: 12.5px; }
+
+/* ---------------------------------------------- KPI CARDS – gradient 3D
+   Each card: vivid two-tone gradient (--g1 -> --g2), a darker "slab" under
+   it for thickness, glossy top light, floating icon, pointer-tracked tilt. */
+.kpi-grid { perspective: 1100px; gap: 16px; }
+.kpi {
+  --rx: 0deg; --ry: 0deg; --g1: #FF5F6D; --g2: #C2185B;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 45%),
+    linear-gradient(135deg, var(--g1) 0%, var(--g2) 100%);
+  border: 1px solid rgba(255,255,255,.22);
+  color: #fff;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.45) inset,
+    0 -2px 0 rgba(0,0,0,.18) inset,
+    0 7px 0 -1px color-mix(in srgb, var(--g2) 62%, #000),
+    0 22px 34px -14px color-mix(in srgb, var(--g2) 75%, transparent),
+    0 30px 40px -24px rgba(0,0,0,.7);
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform .18s ease-out, box-shadow .25s;
+  overflow: hidden;
+}
+.kpi::before { /* slanted brand edge, now white glass */
+  background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.55)); box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.kpi::after { /* moving sheen */
+  content: ""; position: absolute; inset: -40% -60%; pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.28) 50%, transparent 60%);
+  transform: translateX(-70%); transition: transform .9s cubic-bezier(.2,.8,.2,1);
+}
+.kpi:hover::after { transform: translateX(70%); }
+.kpi:hover {
+  transform: translateY(-6px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.02);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.5) inset, 0 -2px 0 rgba(0,0,0,.18) inset,
+    0 10px 0 -1px color-mix(in srgb, var(--g2) 62%, #000),
+    0 34px 46px -16px color-mix(in srgb, var(--g2) 80%, transparent),
+    0 40px 50px -26px rgba(0,0,0,.75);
+}
+.kpi .k-label { color: rgba(255,255,255,.92); font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.kpi .k-icon {
+  color: #fff; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35);
+  box-shadow: 0 8px 16px -6px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.5) inset;
+  transform: translateZ(30px); transition: transform .3s;
+}
+.kpi:hover .k-icon { transform: translateZ(40px) rotate(-8deg) scale(1.08); }
+.kpi .k-value { color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.18), 0 6px 14px rgba(0,0,0,.25); transform: translateZ(22px); }
+.kpi .k-foot { color: rgba(255,255,255,.85); }
+.kpi .trend.up, .kpi .trend.down, .kpi .trend.flat, .kpi .restricted { color: #fff; }
+.kpi .trend { background: rgba(0,0,0,.18); border-radius: 999px; padding: 1px 7px 1px 5px; }
+.kpi .trend.down { background: rgba(120,0,20,.32); }
+.kpi > * { position: relative; z-index: 1; transform-style: preserve-3d; }
+.skel-kpi { border-radius: 16px; }
+
+/* --------------------------------------------------------- PANELS – 3D */
+.content { perspective: 1800px; perspective-origin: 50% 0; }
+.panel, .summary-strip, .filterbar {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.08) inset,
+    0 -1px 0 rgba(0,0,0,.35) inset,
+    0 6px 0 -2px color-mix(in srgb, var(--panel-solid) 70%, #000),
+    0 26px 44px -22px rgba(0,0,0,.85);
+}
+.panel {
+  --rx: 0deg; --ry: 0deg;
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform .2s ease-out, box-shadow .3s, border-color .3s;
+  transform-style: flat;
+}
+.panel:hover {
+  border-color: color-mix(in srgb, var(--accent-2) 35%, var(--panel-border));
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.1) inset, 0 -1px 0 rgba(0,0,0,.35) inset,
+    0 8px 0 -2px color-mix(in srgb, var(--panel-solid) 70%, #000),
+    0 36px 56px -24px rgba(0,0,0,.9), 0 0 0 1px color-mix(in srgb, var(--accent-2) 12%, transparent);
+}
+.panel-head h3::before { box-shadow: 3px 3px 0 color-mix(in srgb, var(--skynet-red-deep) 60%, #000); }
+.chart-box { filter: drop-shadow(0 10px 14px rgba(0,0,0,.18)); }
+
+/* 3D reveal: elements rise and un-tilt into place when they enter the view */
+.fx-reveal { opacity: 0; transform: translateY(34px) rotateX(-16deg) scale(.97); transform-origin: 50% 100%; }
+.fx-reveal.fx-in {
+  opacity: 1; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: opacity .6s ease-out var(--fx-delay, 0ms), transform .75s cubic-bezier(.17,.84,.3,1.15) var(--fx-delay, 0ms);
+}
+.fx-reveal.fx-in.fx-done { transition: transform .18s ease-out, box-shadow .3s, border-color .3s; }
+.kpi.fx-reveal:not(.fx-in) { transform: translateY(26px) rotateX(-60deg); transform-origin: 50% 100%; }
+
+.kpi.fx-reveal.fx-in:hover { transform: translateY(-6px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.02); }
+
+/* --------------------------------------------- SHELL (sidebar, topbar) */
+.nav a { transition: color .15s, background .15s, transform .2s; }
+.nav a:hover { transform: perspective(400px) translateZ(14px) translateX(2px); }
+.nav a svg { transition: transform .25s; }
+.nav a:hover svg { transform: scale(1.15) rotate(-6deg); }
+.topbar { box-shadow: 0 12px 30px -18px rgba(0,0,0,.8); }
+.btn-primary { box-shadow: 0 4px 0 color-mix(in srgb, var(--skynet-red-deep) 70%, #000), 0 12px 22px -10px rgba(227,43,36,.7); }
+.btn-primary:active { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--skynet-red-deep) 70%, #000), 0 6px 12px -8px rgba(227,43,36,.7); }
+.seg button.on { box-shadow: 0 3px 0 rgba(0,0,0,.35), 0 6px 12px -6px rgba(0,0,0,.5); transform: translateY(-1px); }
+.chip { box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+
+/* slow drifting colour light behind everything */
+body::after {
+  content: ""; position: fixed; inset: -20%; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(35% 30% at 20% 30%, var(--bg-glow-1), transparent 70%),
+    radial-gradient(30% 28% at 80% 70%, var(--bg-glow-2), transparent 70%);
+  animation: drift 22s ease-in-out infinite alternate;
+}
+@keyframes drift { from { transform: translate3d(-4%, -3%, 0) rotate(0deg); } to { transform: translate3d(4%, 3%, 0) rotate(8deg); } }
+
+/* light mode: keep the gradient cards vivid, soften the slabs */
+[data-mode="light"] .panel, [data-mode="light"] .summary-strip, [data-mode="light"] .filterbar {
+  box-shadow: 0 1px 0 #fff inset, 0 5px 0 -2px rgba(20,40,90,.12), 0 22px 36px -22px rgba(20,40,90,.35);
+}
+
+/* no sideways page scroll on phones: wide tables scroll inside their panel */
+.main, #login-screen { overflow-x: clip; }
+@media (max-width: 760px) { .panel { overflow-x: auto; } }
+
+/* -------------------------------------------------------- REDUCED MOTION */
+@media (prefers-reduced-motion: reduce) {
+  .fx-reveal, .fx-reveal.fx-in { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .kpi, .panel, .kpi:hover, .panel:hover { transform: none !important; }
+  .login-brand .label-card, body::after { animation: none; }
+}
+@media print {
+  .fx-reveal { opacity: 1 !important; transform: none !important; }
+  .kpi { color: #000; background: #fff; box-shadow: none; }
+  body::after { display: none; }
+}

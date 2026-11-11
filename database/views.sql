@@ -166,8 +166,9 @@ begin
     'countries',   coalesce((select jsonb_agg(x order by x) from (select distinct destination_country x from s where destination_country is not null) t),'[]'),
     'awb_states',  coalesce((select jsonb_agg(x order by x) from (select distinct awb_state x from s where awb_state is not null) t),'[]'),
     'services',    coalesce((select jsonb_agg(x order by x) from (select distinct service_name x from s where service_name is not null) t),'[]'),
-    'customers',   coalesce((select jsonb_agg(jsonb_build_object('code',code,'name',name) order by name)
-                              from (select customer_code code, max(customer_name) name from s group by customer_code) t),'[]'),
+    'customers',   coalesce((select jsonb_agg(jsonb_build_object('code',code,'name',name,'awb',awb,'rev',rev) order by name)
+                              from (select customer_code code, max(customer_name) name, count(*) awb, sum(revenue) rev
+                                    from s group by customer_code) t),'[]'),
     'min_date', (select min(booking_date) from s),
     'max_date', (select max(booking_date) from s)
   ) into r;

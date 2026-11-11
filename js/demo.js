@@ -197,11 +197,11 @@ const RPC = {
   get_filter_options() {
     assertActive(); const s = scoped({});
     const uniq = (k) => [...new Set(s.map((r) => r[k]).filter(Boolean))].sort();
-    const cust = new Map(); s.forEach((r) => cust.set(r.customer_code, r.customer_name));
+    const cust = new Map(); s.forEach((r) => { const c = cust.get(r.customer_code) || { name: r.customer_name, awb: 0, rev: 0 }; c.awb++; c.rev = r.revenue === null || c.rev === null ? null : c.rev + Number(r.revenue); cust.set(r.customer_code, c); });
     const ds = s.map((r) => r.booking_date).sort();
     return { hubs: uniq('origin_hub_code'), salespersons: uniq('salesperson_name'), has_unassigned: s.some((r) => r.salesperson_name === null),
       countries: uniq('destination_country'), awb_states: uniq('awb_state'), services: uniq('service_name'),
-      customers: [...cust].map(([code, name]) => ({ code, name })).sort((a, b) => (a.name || '').localeCompare(b.name || '')),
+      customers: [...cust].map(([code, c]) => ({ code, name: c.name, awb: c.awb, rev: c.rev })).sort((a, b) => (a.name || '').localeCompare(b.name || '')),
       min_date: ds[0] || null, max_date: ds.at(-1) || null };
   },
 

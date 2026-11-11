@@ -77,7 +77,7 @@ export async function render(root, { filters, isStale }) {
     const setHub = (h) => {
       const list = h ? hubs.filter((x) => x.hub === h) : hubs;
       const s = (k) => (list.every((x) => isNil(x[k])) ? null : list.reduce((a, x) => a + n(x[k]), 0));
-      setKpi(root, 'h-awb', s('awb'), int); setKpi(root, 'h-wt', s('wt'), kg); setKpi(root, 'h-rev', s('rev'), inr, isNil(s('rev')) ? '' : '<span>≈ ' + inrShort(s('rev')) + '</span>');
+      setKpi(root, 'h-awb', s('awb'), int); setKpi(root, 'h-wt', s('wt'), kg); setKpi(root, 'h-rev', s('rev'), inr);
       setKpi(root, 'h-cus', s('customers'), int, h ? '' : '<span>Sum of per-hub customers</span>');
       setKpi(root, 'h-hold', s('hold'), int, `<span>${kg(s('hold_wt'))} on hold</span>`);
     };

@@ -4,7 +4,7 @@
 // hubs, salespersons, countries and customers are never hard-coded.
 // =====================================================================
 import { rpc } from './api.js';
-import { $, esc, setHTML, html, raw, addDays, monthStart, dmy, storageGet, storageSet, toast } from './utils.js';
+import { $, esc, setHTML, html, raw, addDays, monthStart, dmy, storageGet, storageSet, toast, inr, int, isNil } from './utils.js';
 
 const KEY = 'skynet_filters_v1';
 const EMPTY = { from: '', to: '', preset: 'last30', hub: '', customer_name: '', customer_code: '', salesperson: '', country: '', hold: '' };
@@ -86,8 +86,13 @@ export function renderFilterBar(el) {
         <option value="last_month">Last month</option><option value="last90">Last 90 days</option>
         <option value="all">All dates</option><option value="custom">Custom range</option>
       </select></label>
-    <label class="field"><span>Customer name</span>
-      <input class="input" id="flt-cname" list="dl-cname" placeholder="All customers" value="${state.customer_name}" autocomplete="off"></label>
+    <div class="field"><span>Customer name</span>
+      <div class="combo" id="cmb-cname">
+        <input class="input" id="flt-cname" placeholder="All customers" value="${state.customer_name}" autocomplete="off"
+          role="combobox" aria-expanded="false" aria-controls="cmb-cname-list" aria-autocomplete="list">
+        <i data-lucide="chevron-down" class="combo-caret"></i>
+        <div class="combo-pop hidden" id="cmb-cname-list" role="listbox"></div>
+      </div></div>
     <label class="field"><span>Customer code</span>
       <input class="input" id="flt-ccode" list="dl-ccode" placeholder="All codes" value="${state.customer_code}" autocomplete="off"></label>
     <label class="field"><span>Salesperson</span>
@@ -106,8 +111,8 @@ export function renderFilterBar(el) {
       <button class="btn btn-primary" id="flt-apply"><i data-lucide="filter"></i>Apply filters</button>
       <button class="btn" id="flt-reset" title="Reset filters"><i data-lucide="rotate-ccw"></i>Reset</button>
     </div>
-    <datalist id="dl-cname">${options.customers.map((c) => html`<option value="${c.name}">${c.code}</option>`)}</datalist>
-    <datalist id="dl-ccode">${options.customers.map((c) => html`<option value="${c.code}">${c.name}</option>`)}</datalist>`);
+    <datalist id="dl-ccode">${options.customers.map((c) => html`<option value="${c.code}">${c.name} · ${custTotal(c)}</option>`)}</datalist>`);
+  bindCustomerCombo(el);
   syncPresetSelect();
   $('#flt-preset', el).addEventListener('change', (e) => { if (e.target.value !== 'custom') applyPreset(e.target.value, false); });
   $('#flt-apply', el).addEventListener('click', () => {
@@ -120,6 +125,45 @@ export function renderFilterBar(el) {
   });
   $('#flt-reset', el).addEventListener('click', reset);
   el.querySelectorAll('input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#flt-apply', el).click(); }));
+}
+
+// ---------- Customer name combobox: name + code on the left, customer total on the right ----------
+const custTotal = (c) => (!isNil(c.rev) ? inr(c.rev) : !isNil(c.awb) ? int(c.awb) + ' AWB' : '');
+function bindCustomerCombo(el) {
+  const box = $('#cmb-cname', el); if (!box) return;
+  const inp = $('#flt-cname', box), pop = $('#cmb-cname-list', box);
+  const all = options.customers || [];
+  const showRev = all.some((c) => !isNil(c.rev));
+  let items = [], active = -1;
+  const close = () => { pop.classList.add('hidden'); inp.setAttribute('aria-expanded', 'false'); active = -1; };
+  const draw = () => {
+    const q = inp.value.trim().toLowerCase();
+    items = (q ? all.filter((c) => (c.name || '').toLowerCase().includes(q) || String(c.code || '').toLowerCase().includes(q)) : all)
+      .slice().sort((a, b) => (showRev ? (Number(b.rev) || 0) - (Number(a.rev) || 0) : (b.awb || 0) - (a.awb || 0)));
+    const shown = items.slice(0, 300);
+    const sumRev = items.reduce((t, c) => t + (Number(c.rev) || 0), 0), sumAwb = items.reduce((t, c) => t + (Number(c.awb) || 0), 0);
+    setHTML(pop, html`<div class="combo-head"><span>Customer</span><span>${showRev ? 'Total revenue' : 'Total AWBs'}</span></div>
+      <div class="combo-body">${shown.length ? shown.map((c, i) => html`<div class="combo-opt" role="option" data-i="${i}" id="cmb-opt-${i}">
+          <span class="co-name"><b>${c.name || '(no name)'}</b><small>${c.code || ''} · ${int(c.awb)} AWB</small></span>
+          <span class="co-total num">${custTotal(c)}</span></div>`) : html`<div class="combo-empty">No customer matches “${inp.value}”</div>`}
+        ${items.length > shown.length ? html`<div class="combo-empty">+ ${int(items.length - shown.length)} more – type to narrow down</div>` : ''}</div>
+      <div class="combo-foot"><span>Total · ${int(items.length)} customers</span><b class="num">${showRev ? inr(sumRev) : int(sumAwb) + ' AWB'}</b></div>`);
+    pop.classList.remove('hidden'); inp.setAttribute('aria-expanded', 'true'); active = -1;
+  };
+  const pick = (i) => { const c = items[i]; if (!c) return; inp.value = c.name || ''; close(); };
+  const mark = () => pop.querySelectorAll('.combo-opt').forEach((o, i) => { o.classList.toggle('on', i === active); if (i === active) { o.scrollIntoView({ block: 'nearest' }); inp.setAttribute('aria-activedescendant', o.id); } });
+  inp.addEventListener('focus', draw);
+  inp.addEventListener('input', draw);
+  inp.addEventListener('keydown', (e) => {
+    const n_ = pop.querySelectorAll('.combo-opt').length;
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (pop.classList.contains('hidden')) draw(); active = Math.min(n_ - 1, active + 1); mark(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(0, active - 1); mark(); }
+    else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); e.stopImmediatePropagation(); pick(active); }
+    else if (e.key === 'Escape') close();
+  });
+  pop.addEventListener('mousedown', (e) => { const o = e.target.closest('.combo-opt'); if (o) { e.preventDefault(); pick(+o.dataset.i); } });
+  box.querySelector('.combo-caret').addEventListener('mousedown', (e) => { e.preventDefault(); if (pop.classList.contains('hidden')) { inp.focus(); draw(); } else close(); });
+  inp.addEventListener('blur', () => setTimeout(close, 120));
 }
 
 const LABELS = { hub: 'Hub', customer_name: 'Customer', customer_code: 'Code', salesperson: 'Salesperson', country: 'Country', hold: 'Hold' };

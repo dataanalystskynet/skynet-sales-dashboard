@@ -53,7 +53,7 @@ export async function render(root, { filters, isStale }) {
   const gAwb = growth(k.awb, p.awb), gWt = growth(k.weight, p.weight), gRev = growth(k.revenue, p.revenue), gCus = growth(k.customers, p.customers);
   setKpi(root, 'awb', k.awb, int, trendHtml(gAwb));
   setKpi(root, 'wt', k.weight, kg, trendHtml(gWt));
-  setKpi(root, 'rev', k.revenue, inr, isNil(k.revenue) ? '' : trendHtml(gRev, '≈ ' + inrShort(k.revenue)));
+  setKpi(root, 'rev', k.revenue, inr, isNil(k.revenue) ? '' : trendHtml(gRev, 'vs prev. period'));
   setKpi(root, 'cust', k.customers, int, trendHtml(gCus));
   setKpi(root, 'sp', k.salespersons, int, k.unassigned ? `<span>${int(k.unassigned)} AWBs unassigned</span>` : '<span>All AWBs assigned</span>');
   setKpi(root, 'hold', k.hold, int, `<span>${share(k.awb ? (k.hold / k.awb) * 100 : 0)} of AWBs</span>`);
@@ -157,5 +157,5 @@ function renderToday(el, daily) {
     <div><div class="s-label">Weight</div><div class="s-val">${kgShort(ref.wt)}</div></div>
     <div><div class="s-label">Revenue</div><div class="s-val">${isNil(ref.rev) ? '—' : inrShort(ref.rev)}</div></div>
     <div><div class="s-label">Previous working day ${prev ? '(' + dmy(prev.d) + ')' : ''}</div><div class="s-val">${prev ? int(prev.awb) + ' AWBs' : '—'}</div></div>
-    <div><div class="s-label">Revenue difference · growth</div><div class="s-val">${raw(diff === null ? '—' : `${esc((diff >= 0 ? '+' : '−') + inrShort(Math.abs(diff)).replace('₹', '₹'))} <span class="trend ${g > 0 ? 'up' : g < 0 ? 'down' : 'flat'}" style="font-size:14px">${esc(pct(g))}</span>`)}</div></div>`);
+    <div><div class="s-label">Revenue difference · growth</div><div class="s-val">${raw(diff === null ? '—' : `${esc((diff >= 0 ? '+' : '−') + inrShort(Math.abs(diff)))} <span class="trend ${g > 0 ? 'up' : g < 0 ? 'down' : 'flat'}" style="font-size:14px">${esc(pct(g))}</span>`)}</div></div>`);
 }

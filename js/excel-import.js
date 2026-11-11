@@ -338,7 +338,7 @@ async function stageValidate(root) {
       <div>Records to write</div><div><b>${int(finalRows.length)}</b> (unique AWBs) in batches of ${appState.settings.import_batch_size || 500}</div>
       <div>Issues found</div><div>${int(failed)} errors · ${int(warn)} warnings · ${int(dupRows)} duplicates – none are silently discarded; download the report below.</div></div>
     <div class="grid g-2 mt"><div>
-      <label class="field"><span>Billing currency of CUSTOMER GRAND TOTAL</span><select class="select" id="cur">${fxList.map((r) => html`<option value="${r.currency}" data-rate="${r.rate_to_inr}" ${r.currency === defCur ? raw('selected') : ''}>${r.currency}${r.currency === 'INR' ? ' (no conversion)' : ' @ ₹' + r.rate_to_inr}</option>`)}</select></label>
+      <label class="field"><span>Billing currency of CUSTOMER GRAND TOTAL</span><select class="select" id="cur">${fxList.map((r) => html`<option value="${r.currency}" data-rate="${r.rate_to_inr}" ${r.currency === defCur ? raw('selected') : ''}>${r.currency}${r.currency === 'INR' ? ' (no conversion)' : ' @ ₹ ' + r.rate_to_inr}</option>`)}</select></label>
       <p class="muted" style="font-size:12px;margin-top:-6px">Keep INR unless the business owner confirmed amounts are billed in another currency. Approved rates are managed in Application Settings; originals are preserved.</p>
     </div><div><label class="check" style="margin-top:28px"><input type="checkbox" id="ok"> I have reviewed the summary. Update ${int(finalRows.length - newCount)} existing and insert ${int(newCount)} new AWBs.</label></div></div>
     <div class="mt" style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">

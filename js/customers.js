@@ -42,7 +42,7 @@ export async function render(root, { filters, isStale }) {
   setKpi(root, 'active', k.active, int, trendHtml(growth(k.active, k.prev_active)));
   setKpi(root, 'awb', k.awb, int);
   setKpi(root, 'wt', k.weight, kg);
-  setKpi(root, 'rev', k.revenue, inr, isNil(k.revenue) ? '' : '<span>≈ ' + inrShort(k.revenue) + '</span>');
+  setKpi(root, 'rev', k.revenue, inr);
   setKpi(root, 'avg', k.avg_revenue, inr, '<span>Revenue ÷ active customers</span>');
   setKpi(root, 'new', k.new_customers, int, `<span>${int(k.returning)} returning customers</span>`);
 

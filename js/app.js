@@ -8,6 +8,7 @@ import * as auth from './auth.js';
 import { setContext, getContext, profile, allowedRoutes, firstAllowedRoute, ROUTES } from './permissions.js';
 import * as filters from './filters.js';
 import { destroyAll } from './charts.js';
+import { startFx3d } from './fx3d.js';
 import { $, $$, esc, html, raw, setHTML, toast, errMsg, icons, storageGet, storageSet, closeOverlays, dmyTime, int } from './utils.js';
 
 const PAGES = {
@@ -38,6 +39,7 @@ async function boot() {
   try { await initApi(); }
   catch (e) { $('#boot').textContent = 'Could not start: ' + errMsg(e); return; }
   auth.watchAuthEvents();
+  startFx3d();
   let session = null;
   try { session = await auth.getSession(); } catch (_) { /* ignore */ }
   $('#boot').remove();

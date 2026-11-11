@@ -6,8 +6,15 @@
 import { esc, html, raw, setHTML, icons, inr, int, kg, dmy, share, pct, isNil, debounce, emptyState, holdBadge, exportExcel, animateValue, inrShort, n, toast } from './utils.js';
 import { can } from './permissions.js';
 
+/** Two-tone gradients for the 3D KPI cards, keyed by the tone colour variable */
+const KPI_GRADS = {
+  'var(--c1)': ['#FF6A5C', '#C3132B'], 'var(--c2)': ['#4FACFE', '#2F3FD0'], 'var(--c3)': ['#F9B233', '#E8501B'],
+  'var(--c4)': ['#1ED6B0', '#0B7F8C'], 'var(--c5)': ['#B57CFF', '#5B2FD6'], 'var(--c6)': ['#29C5F6', '#0A5FC9'],
+  'var(--c7)': ['#FF9A6B', '#E0306A'], 'var(--c8)': ['#9BDB4D', '#1F9254'], 'var(--skynet-red)': ['#FF5A4E', '#B71C17'],
+};
 export function kpiCard({ id, label, icon, tone = 'var(--skynet-red)' }) {
-  return `<div class="kpi" style="--kpi-tone:${tone}" id="kpi-${esc(id)}">
+  const [g1, g2] = KPI_GRADS[tone] || KPI_GRADS['var(--skynet-red)'];
+  return `<div class="kpi" style="--kpi-tone:${tone};--g1:${g1};--g2:${g2}" id="kpi-${esc(id)}">
     <div class="k-top"><span class="k-label">${esc(label)}</span><span class="k-icon"><i data-lucide="${esc(icon)}"></i></span></div>
     <div class="k-value" data-v>—</div><div class="k-foot" data-f></div></div>`;
 }

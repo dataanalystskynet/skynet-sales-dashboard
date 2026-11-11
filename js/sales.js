@@ -42,7 +42,7 @@ export async function render(root, { filters, isStale }) {
     ${panel({ title: 'Salesperson performance', sub: prevLabel(rf) + ' for growth', cls: 'mt', body: '<div id="tbl"></div>' })}`;
 
   setKpi(root, 'sp', k.salespersons, int, sps.some((s) => s.name === 'Unassigned') ? '<span>+ Unassigned bookings</span>' : '');
-  setKpi(root, 'rev', k.revenue, inr, isNil(k.revenue) ? '' : '<span>≈ ' + inrShort(k.revenue) + '</span>');
+  setKpi(root, 'rev', k.revenue, inr);
   setKpi(root, 'awb', k.awb, int); setKpi(root, 'wt', k.weight, kg);
   setKpi(root, 'avg', k.avg_revenue, inr, '<span>Excludes unassigned AWBs</span>');
 

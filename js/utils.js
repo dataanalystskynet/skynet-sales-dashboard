@@ -4,7 +4,6 @@
 // =====================================================================
 
 // ---------- Formatting ----------
-const inrFmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const numFmt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const wtFmt = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dec1 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -12,16 +11,22 @@ const dec1 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 1, maximumF
 export const isNil = (v) => v === null || v === undefined || (typeof v === 'number' && Number.isNaN(v));
 export const n = (v) => (isNil(v) || v === '' ? 0 : Number(v));
 
-/** ₹1,00,000.00  (null -> '—') */
-export function inr(v) { return isNil(v) ? '—' : inrFmt.format(Number(v)); }
-/** Compact Indian units: ₹12.32 Cr / ₹4.50 L / ₹9,500 */
-export function inrShort(v) {
+/** Amount format used everywhere: "₹ 1,00,000" – rupee symbol, ONE space, Indian grouping, no decimals */
+export function inr(v) {
   if (isNil(v)) return '—';
+  const x = Math.round(Number(v));
+  return (x < 0 ? '−' : '') + '₹ ' + numFmt.format(Math.abs(x));
+}
+/** Same full format (kept for existing callers – amounts are never abbreviated or shown with decimals) */
+export const inrShort = inr;
+/** Chart-axis ticks only: "₹ 14 L" / "₹ 1 Cr" (whole numbers; one decimal only if the tick itself is fractional) */
+export function inrAxis(v) {
+  if (isNil(v)) return '';
   const x = Number(v), a = Math.abs(x), sg = x < 0 ? '−' : '';
-  if (a >= 1e7) return sg + '₹' + (a / 1e7).toFixed(2) + ' Cr';
-  if (a >= 1e5) return sg + '₹' + (a / 1e5).toFixed(2) + ' L';
-  if (a >= 1e3) return sg + '₹' + numFmt.format(a);
-  return sg + '₹' + a.toFixed(0);
+  const t = (q) => (Number.isInteger(q) ? String(q) : q.toFixed(1).replace(/\.0$/, ''));
+  if (a >= 1e7) return sg + '₹ ' + t(Math.round(a / 1e6) / 10) + ' Cr';
+  if (a >= 1e5) return sg + '₹ ' + t(Math.round(a / 1e4) / 10) + ' L';
+  return sg + '₹ ' + numFmt.format(Math.round(a));
 }
 export function int(v) { return isNil(v) ? '—' : numFmt.format(Number(v)); }
 /** 1,234.50 KG */
@@ -213,7 +218,8 @@ export function exportExcel(fileBase, sheets) {
         const v = c.get ? c.get(r) : r[c.key];
         if (isNil(v)) return '';
         if (c.type === 'date') return dmy(v);
-        if (c.type === 'inr' || c.type === 'kg' || c.type === 'num' || c.type === 'pct') return Math.round(Number(v) * 100) / 100;
+        if (c.type === 'inr') return Math.round(Number(v));
+        if (c.type === 'kg' || c.type === 'num' || c.type === 'pct') return Math.round(Number(v) * 100) / 100;
         return typeof v === 'object' ? JSON.stringify(v) : v;
       }));
     }
@@ -224,7 +230,7 @@ export function exportExcel(fileBase, sheets) {
       if (c.type !== 'inr' && c.type !== 'kg') return;
       for (let ri = 1; ri < aoa.length; ri++) {
         const ref = window.XLSX.utils.encode_cell({ r: ri, c: ci });
-        if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = c.type === 'inr' ? '"₹"#,##,##0.00' : '#,##0.00';
+        if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = c.type === 'inr' ? '"₹ "#,##,##0' : '#,##0.00';
       }
     });
     window.XLSX.utils.book_append_sheet(wb, ws, (s.name || 'Sheet').slice(0, 31));
