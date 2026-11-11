@@ -107,7 +107,7 @@ declare v_from date := nullif(f->>'from','')::date; v_to date := nullif(f->>'to'
 begin
   if v_from is null or v_to is null then
     select min(booking_date), max(booking_date) into d1, d2 from public.scoped_shipments(f - 'from' - 'to');
-    v_from := coalesce(v_from, d1, current_date); v_to := coalesce(v_to, d2, current_date);
+    v_from := coalesce(v_from, d1, (now() at time zone 'Asia/Kolkata')::date); v_to := coalesce(v_to, d2, (now() at time zone 'Asia/Kolkata')::date);
   end if;
   if v_to < v_from then raise exception 'End date is before start date' using errcode = '22023'; end if;
   n := (v_to - v_from) + 1;
@@ -817,12 +817,41 @@ begin
   perform public.assert_active();
   update public.profiles set
     full_name   = coalesce(nullif(left(trim(p->>'full_name'),120),''), full_name),
-    mobile      = case when p ? 'mobile' then left(p->>'mobile',20) else mobile end,
+    -- mobile = login ID -> only an admin changes it (User Management)
     avatar_url  = case when p ? 'avatar_url' then left(p->>'avatar_url',500) else avatar_url end,
     preferences = case when p ? 'preferences' then preferences || (p->'preferences') else preferences end
   where id = auth.uid() returning * into n;
   return to_jsonb(n);
 end $$;
+
+-- ---------------------------------------------------------------------
+-- 11b. DEFAULT PASSWORD (value kept server-side only) + first-login change
+-- ---------------------------------------------------------------------
+create or replace function public.set_default_password(p_password text) returns void
+language plpgsql volatile security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Only ADMIN can change the default password' using errcode = '42501'; end if;
+  if p_password is null or length(p_password) < 8 or p_password !~ '[A-Za-z]' or p_password !~ '[0-9]' then
+    raise exception 'Default password: at least 8 characters with letters and numbers';
+  end if;
+  insert into public.private_settings(key, value, updated_by) values ('default_password', p_password, auth.uid())
+  on conflict (key) do update set value = excluded.value, updated_by = excluded.updated_by, updated_at = now();
+  insert into public.audit_logs(user_id, user_name, action, record_type, record_id, remarks)
+  values (auth.uid(), public.my_name(), 'SETTING_CHANGE', 'setting', 'default_password', 'Default password changed (value not logged)');
+end $$;
+
+create or replace function public.default_password_info() returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not (public.is_admin() or public.perm_allows('user_management')) then raise exception 'Not authorised' using errcode = '42501'; end if;
+  return coalesce((select jsonb_build_object('is_set', true, 'updated_at', updated_at) from public.private_settings where key = 'default_password'),
+                  jsonb_build_object('is_set', false));
+end $$;
+
+create or replace function public.password_changed() returns void
+language sql volatile security definer set search_path = public as $$
+  update public.profiles set must_change_password = false where id = auth.uid() and must_change_password;
+$$;
 
 -- ---------------------------------------------------------------------
 -- 12. SALES TARGETS
@@ -930,9 +959,9 @@ begin
     raise exception 'Not authorised' using errcode = '42501';
   end if;
   insert into public.exchange_rates(currency, rate_to_inr, approved_by, updated_by, effective_date)
-  values (upper(p_currency), p_rate, p_approved_by, auth.uid(), current_date)
+  values (upper(p_currency), p_rate, p_approved_by, auth.uid(), (now() at time zone 'Asia/Kolkata')::date)
   on conflict (currency) do update set rate_to_inr = excluded.rate_to_inr, approved_by = excluded.approved_by,
-     updated_by = excluded.updated_by, updated_at = now(), effective_date = current_date;
+     updated_by = excluded.updated_by, updated_at = now(), effective_date = (now() at time zone 'Asia/Kolkata')::date;
   insert into public.audit_logs(user_id, user_name, action, record_type, record_id, new_value)
   values (auth.uid(), public.my_name(), 'FX_RATE_CHANGE', 'setting', upper(p_currency),
           jsonb_build_object('rate_to_inr', p_rate, 'approved_by', p_approved_by));

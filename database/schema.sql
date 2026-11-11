@@ -224,6 +224,20 @@ create table if not exists public.app_settings (
   updated_at  timestamptz not null default now()
 );
 
+-- Server-only secrets (e.g. the default password for new users / resets).
+-- RLS on + no policies + no grants: only the service role (Edge Function) can read it.
+create table if not exists public.private_settings (
+  key         text primary key,
+  value       text not null,
+  updated_by  uuid references public.profiles(id) on delete set null,
+  updated_at  timestamptz not null default now()
+);
+alter table public.private_settings enable row level security;
+revoke all on public.private_settings from anon, authenticated;
+
+-- user must pick a new password at next login (set after create / reset to default)
+alter table public.profiles add column if not exists must_change_password boolean not null default false;
+
 create table if not exists public.exchange_rates (
   currency        text primary key check (currency ~ '^[A-Z]{3}$'),
   rate_to_inr     numeric(14,6) not null check (rate_to_inr > 0),

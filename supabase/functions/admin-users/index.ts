@@ -73,7 +73,37 @@ Deno.serve(async (req) => {
     return data;
   };
 
+  // default password lives only in public.private_settings (service role) – never in this code / GitHub
+  const defaultPw = async (): Promise<string | null> => {
+    const { data } = await admin.from('private_settings').select('value').eq('key', 'default_password').maybeSingle();
+    return data?.value ?? null;
+  };
+
   try {
+    // ------------------------------------------------------------ RESET TO DEFAULT PASSWORD (one, many or all users)
+    if (b.action === 'reset_default') {
+      if (!isAdmin) return reply(req, { error: 'Only ADMIN can reset passwords to the default' }, 403);
+      const pw = await defaultPw();
+      if (!pw) return reply(req, { error: 'Set the default password first (Application Settings → Default password)' }, 400);
+      let q = admin.from('profiles').select('id, role, email, full_name').neq('id', caller.id);   // never the admin doing it
+      if (!b.all) {
+        const ids = (Array.isArray(b.user_ids) ? b.user_ids : [b.user_id]).map(String).filter((x: string) => uuidRe.test(x));
+        if (!ids.length) return reply(req, { error: 'No users selected' }, 400);
+        q = q.in('id', ids);
+      }
+      const { data: targets, error: tErr } = await q;
+      if (tErr) return reply(req, { error: tErr.message }, 500);
+      let done = 0; const failed: string[] = [];
+      for (const t of targets ?? []) {
+        const { error } = await admin.auth.admin.updateUserById(t.id, { password: pw });
+        if (error) { failed.push((t.full_name || t.email || t.id) + ': ' + error.message); continue; }
+        await admin.from('profiles').update({ must_change_password: b.force_change !== false }).eq('id', t.id);
+        done++;
+      }
+      await audit('USER_PASSWORD_RESET', b.all ? 'ALL' : String(b.user_id ?? 'many'), null, { to_default: true, count: done, failed: failed.length, by: caller.email });
+      return reply(req, { ok: true, count: done, failed });
+    }
+
     // ------------------------------------------------------------ CREATE
     if (b.action === 'create') {
       const email = String(b.email ?? '').trim().toLowerCase();          // contact e-mail – optional, may be shared
@@ -104,7 +134,8 @@ Deno.serve(async (req) => {
         userId = data.user.id;
         await admin.auth.admin.updateUserById(userId, { app_metadata });
       } else {
-        const pw = String(b.password ?? '');
+        const pw = b.use_default ? (await defaultPw()) ?? '' : String(b.password ?? '');
+        if (b.use_default && !pw) return reply(req, { error: 'Set the default password first (Application Settings → Default password)' }, 400);
         if (!strongPw(pw)) return reply(req, { error: 'Password must be 8+ characters with letters and numbers' }, 400);
         // use the real e-mail as the login e-mail when it is free; if it is shared with another
         // user (or empty) give this user a private login e-mail based on the mobile number
@@ -126,6 +157,7 @@ Deno.serve(async (req) => {
         assigned_hubs: strArr(b.assigned_hubs),
         salesperson_names: strArr(b.salesperson_names),
         team_salespersons: strArr(b.team_salespersons),
+        must_change_password: !b.invite && b.force_change !== false,
       });
       if (pErr) return reply(req, { error: 'User created but profile update failed: ' + pErr.message }, 500);
       const perms = Object.entries(b.permissions ?? {})
@@ -155,6 +187,7 @@ Deno.serve(async (req) => {
       if (!strongPw(pw)) return reply(req, { error: 'Password must be 8+ characters with letters and numbers' }, 400);
       const { error } = await admin.auth.admin.updateUserById(id, { password: pw });
       if (error) return reply(req, { error: error.message }, 400);
+      await admin.from('profiles').update({ must_change_password: b.force_change === true }).eq('id', id);
       await audit('USER_PASSWORD_RESET', id, null, { by: caller.email });   // password itself never logged
       return reply(req, { ok: true });
     }

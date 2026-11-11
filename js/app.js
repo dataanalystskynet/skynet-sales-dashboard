@@ -111,6 +111,7 @@ async function enterApp() {
   window.addEventListener('hashchange', route);
   route();
   loadNotifications();
+  if (ctx.profile.must_change_password) await auth.forcePasswordChange();
 }
 
 // ---------------------------------------------------------------- shell

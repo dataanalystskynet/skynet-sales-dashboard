@@ -42,15 +42,35 @@ export async function sendPasswordReset(email) {
 }
 
 /** Change password. If currentPassword is given it is verified first (re-authentication). */
-export async function changePassword(newPassword, currentPassword, email) {
+export async function changePassword(newPassword, currentPassword) {
   if (!newPassword || newPassword.length < 8) throw new Error('Password must be at least 8 characters.');
   if (!/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) throw new Error('Use letters and numbers in the password.');
+  // verify with the LOGIN e-mail of this session (the profile e-mail may be a shared contact address)
+  const email = (await sb().auth.getUser()).data?.user?.email;
   if (currentPassword && email) {
     const { error } = await sb().auth.signInWithPassword({ email, password: currentPassword });
     if (error) throw new Error('Current password is incorrect.');
   }
   const { error } = await sb().auth.updateUser({ password: newPassword });
   if (error) throw error;
+  try { await rpc('password_changed', {}, { silent: true }); } catch (_) { /* flag clears next time */ }
+}
+
+/** First login with the default / admin-set password: a new personal password is required */
+export function forcePasswordChange() {
+  return new Promise((resolve) => {
+    const m = modal({ title: 'Set your own password',
+      body: `<p class="muted">You signed in with a default password set by the admin. For your security, choose a new personal password now (min 8 characters, letters + numbers).</p>
+        <label class="field"><span>New password</span><input class="input" id="fc-1" type="password" autocomplete="new-password"></label>
+        <label class="field"><span>Confirm new password</span><input class="input" id="fc-2" type="password" autocomplete="new-password"></label>`,
+      foot: `<button class="btn" id="fc-out">Sign out</button><button class="btn btn-primary" id="fc-go">Save password</button>`, locked: true });
+    m.querySelector('#fc-out').onclick = () => signOut();
+    m.querySelector('#fc-go').onclick = async () => {
+      const a = m.querySelector('#fc-1').value, b2 = m.querySelector('#fc-2').value;
+      if (a !== b2) return toast('The two passwords do not match.', 'err');
+      try { await changePassword(a); closeOverlays(); toast('Password changed.', 'ok'); resolve(); } catch (e) { toast(errMsg(e), 'err'); }
+    };
+  });
 }
 
 export async function changeEmail(newEmail) {

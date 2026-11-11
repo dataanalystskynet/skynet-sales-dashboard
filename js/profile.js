@@ -20,7 +20,7 @@ export async function render(root) {
         <div>Salesperson identity</div><div>${esc((p.salesperson_names || []).join(', ') || '—')}</div><div>Last login</div><div>${esc(p.last_login_at ? dmyTime(p.last_login_at) : '—')}</div></div>` })}
     <div class="grid">
       ${panel({ title: 'Personal details', body: `<div class="grid g-2"><label class="field"><span>Full name</span><input class="input" id="pf-name" value="${esc(p.full_name)}" maxlength="120"></label>
-        <label class="field"><span>Mobile number</span><input class="input" id="pf-mobile" value="${esc(p.mobile || '')}" maxlength="15" inputmode="tel"></label></div>
+        <label class="field"><span>Mobile number (login ID – changed by admin)</span><input class="input" id="pf-mobile" value="${esc(p.mobile || '')}" disabled></label></div>
         <button class="btn btn-primary" id="pf-save"><i data-lucide="save"></i>Save details</button>` })}
       ${panel({ title: 'E-mail address', sub: 'A confirmation link is sent to the new address; the change applies after you confirm it.', body: `<div class="grid g-2"><label class="field"><span>New e-mail</span><input class="input" id="pf-email" type="email" value="${esc(p.email)}"></label></div>
         <button class="btn" id="pf-email-btn"><i data-lucide="mail"></i>Change e-mail</button>` })}
@@ -33,10 +33,9 @@ export async function render(root) {
   renderAvatar(root.querySelector('#pf-av'), p);
   const refreshCtx = (np) => { setContext({ ...getContext(), profile: { ...getContext().profile, ...np } }); document.querySelector('#user-name').textContent = np.full_name; renderAvatar(document.querySelector('#user-avatar'), getContext().profile); };
   root.querySelector('#pf-save').onclick = async () => {
-    const full_name = root.querySelector('#pf-name').value.trim(), mobile = root.querySelector('#pf-mobile').value.trim();
+    const full_name = root.querySelector('#pf-name').value.trim();
     if (!full_name) return toast('Name cannot be empty.', 'err');
-    if (mobile && !/^[+0-9 -]{7,15}$/.test(mobile)) return toast('Enter a valid mobile number.', 'err');
-    try { const np = await rpc('update_my_profile', { p: { full_name, mobile } }); refreshCtx(np); toast('Profile saved.', 'ok'); } catch (e) { toast(errMsg(e), 'err'); }
+    try { const np = await rpc('update_my_profile', { p: { full_name } }); refreshCtx(np); toast('Profile saved.', 'ok'); } catch (e) { toast(errMsg(e), 'err'); }
   };
   root.querySelector('#pf-file').onchange = async (e) => {
     const f = e.target.files[0]; if (!f) return;
@@ -60,7 +59,7 @@ export async function render(root) {
     const a = root.querySelector('#pw1').value, b = root.querySelector('#pw2').value, cur = root.querySelector('#pw0').value;
     if (!cur) return toast('Enter your current password.', 'err');
     if (a !== b) return toast('New passwords do not match.', 'err');
-    try { await changePassword(a, cur, p.email); ['#pw0', '#pw1', '#pw2'].forEach((s) => { root.querySelector(s).value = ''; }); toast('Password updated.', 'ok'); } catch (e) { toast(errMsg(e), 'err'); }
+    try { await changePassword(a, cur); ['#pw0', '#pw1', '#pw2'].forEach((s) => { root.querySelector(s).value = ''; }); toast('Password updated.', 'ok'); } catch (e) { toast(errMsg(e), 'err'); }
   };
   icons(root);
 }

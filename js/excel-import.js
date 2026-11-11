@@ -76,7 +76,11 @@ function validYMD(y, m, d) { if (y < 1990 || y > 2100 || m < 1 || m > 12 || d < 
 /** Indian convention: ambiguous dates are DD/MM/YYYY */
 export function parseDate(v) {
   if (isNil(v) || v === '') return null;
-  if (v instanceof Date && !isNaN(v)) return validYMD(v.getFullYear(), v.getMonth() + 1, v.getDate());
+  if (v instanceof Date && !isNaN(v)) {
+    // SheetJS can shift date-only cells by a few seconds/minutes in IST (historic LMT offset) -> 23:59:xx of the previous day
+    const d = (v.getHours() === 23 && v.getMinutes() >= 50) ? new Date(v.getTime() + 15 * 60 * 1000) : v;
+    return validYMD(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
   if (typeof v === 'number') { if (v < 20000 || v > 80000) return null; const d = new Date(Math.round((v - 25569) * 864e5)); return validYMD(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); }
   const s = String(v).trim();
   let m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/); if (m) { let y = +m[3]; if (y < 100) y += 2000; return validYMD(y, +m[2], +m[1]); }
@@ -374,12 +378,20 @@ async function runImport(root, fx) {
       p_meta: { header_row: S.headerRow + 1, columns: S.headers.length, mapping: Object.fromEntries(Object.entries(S.map).map(([c, f]) => [S.headers[c], f])), rule: 'latest CREATED DATE wins; tie -> lower row' } });
   } catch (e) { S.importing = false; toast(errMsg(e), 'err'); stageValidate(root); return; }
   let ins = 0, upd = 0, done = 0; const failedRows = [];
+  // stop early when every single row fails with the SAME error (a server/setup problem, not bad data)
+  let lastErr = '', sameErr = 0, abortMsg = null;
   const bar = st.querySelector('#bar'), msg = st.querySelector('#pmsg');
   const send = async (chunk) => {
-    try { const r = await rpc('import_batch', { p_import_id: importId, p_rows: chunk.map((c) => c.rec) }, { silent: true }); ins += r.inserted; upd += r.updated; done += chunk.length; }
+    if (abortMsg) { chunk.forEach((c) => failedRows.push({ row: c.rowNo, awb: c.rec.awb_number, type: 'ERROR', field: 'database', message: 'Not imported – ' + abortMsg })); done += chunk.length; return; }
+    try { const r = await rpc('import_batch', { p_import_id: importId, p_rows: chunk.map((c) => c.rec) }, { silent: true }); ins += r.inserted; upd += r.updated; done += chunk.length; sameErr = 0; }
     catch (e) {
       if (chunk.length > 1 && !/not authorised|not running/i.test(e.message)) { const mid = Math.ceil(chunk.length / 2); await send(chunk.slice(0, mid)); await send(chunk.slice(mid)); }
-      else { chunk.forEach((c) => failedRows.push({ row: c.rowNo, awb: c.rec.awb_number, type: 'ERROR', field: 'database', message: errMsg(e) })); done += chunk.length; }
+      else {
+        const em = errMsg(e);
+        chunk.forEach((c) => failedRows.push({ row: c.rowNo, awb: c.rec.awb_number, type: 'ERROR', field: 'database', message: em })); done += chunk.length;
+        sameErr = em === lastErr ? sameErr + 1 : 1; lastErr = em;
+        if (sameErr >= 25 && ins + upd === 0) { abortMsg = em; toast('Import stopped: every row fails with the same server error – ' + em, 'err', 12000); }
+      }
     }
     bar.style.width = ((done / recs.length) * 100).toFixed(1) + '%';
     msg.textContent = `${int(done)} / ${int(recs.length)} processed · ${int(ins)} inserted · ${int(upd)} updated · ${int(failedRows.length)} failed`;

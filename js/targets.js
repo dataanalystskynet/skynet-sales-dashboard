@@ -6,11 +6,11 @@
 import { rpc } from './api.js';
 import { panel } from './ui.js';
 import { renderTargets } from './sales.js';
-import { esc, html, raw, setHTML, icons, toast, errMsg, modal, closeOverlays, inr, int, kg, monLabel, confirmDialog, emptyState, isNil } from './utils.js';
+import { esc, html, raw, setHTML, icons, toast, errMsg, modal, closeOverlays, inr, int, kg, monLabel, confirmDialog, emptyState, isNil, isoDate } from './utils.js';
 import { getOptions } from './filters.js';
 
 export async function render(root) {
-  const max = getOptions().max_date || new Date().toISOString().slice(0, 10);
+  const max = getOptions().max_date || isoDate(new Date());
   let month = max.slice(0, 7);
   root.innerHTML = panel({ title: 'Sales targets', sub: 'Set monthly targets for each salesperson. Achievement uses the customer grand total, AWB count and chargeable weight of that month.',
     tools: `<input type="month" class="input" id="t-month" value="${month}" style="width:170px" aria-label="Target month"><button class="btn btn-primary" id="t-add"><i data-lucide="plus"></i>Add / edit target</button>`,

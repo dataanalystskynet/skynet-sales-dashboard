@@ -4,7 +4,7 @@
 // hubs, salespersons, countries and customers are never hard-coded.
 // =====================================================================
 import { rpc } from './api.js';
-import { $, esc, setHTML, html, raw, addDays, monthStart, dmy, storageGet, storageSet, toast, inr, int, isNil } from './utils.js';
+import { $, esc, setHTML, html, raw, addDays, monthStart, dmy, storageGet, storageSet, toast, inr, int, isNil, isoDate } from './utils.js';
 
 const KEY = 'skynet_filters_v1';
 const EMPTY = { from: '', to: '', preset: 'last30', hub: '', customer_name: '', customer_code: '', salesperson: '', country: '', hold: '' };
@@ -29,7 +29,7 @@ export function params(extra = {}) {
 }
 
 export function applyPreset(p, fire = true) {
-  const max = options.max_date || new Date().toISOString().slice(0, 10);
+  const max = options.max_date || isoDate(new Date());   // local date (toISOString is UTC – wrong before 05:30 IST)
   const min = options.min_date || max;
   state.preset = p;
   if (p === 'latest') { state.from = max; state.to = max; }

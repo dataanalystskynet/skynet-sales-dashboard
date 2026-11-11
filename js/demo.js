@@ -193,7 +193,7 @@ const RPC = {
   },
   touch_last_login() { const p = me(); if (p) p.last_login_at = new Date().toISOString(); },
   email_for_login({ p_login }) { if (p_login.includes('@')) return p_login; const d = p_login.replace(/\D/g, '').slice(-10);
-    return DB.profiles.find((p) => p.is_active && ((d.length === 10 && String(p.mobile || '').replace(/\D/g, '').slice(-10) === d) || p.username === p_login.toLowerCase().trim()))?.email || null; },
+    const f = DB.profiles.find((p) => p.is_active && ((d.length === 10 && String(p.mobile || '').replace(/\D/g, '').slice(-10) === d) || p.username === p_login.toLowerCase().trim())); return f ? (f.login_email || f.email) : null; },
 
   get_filter_options() {
     assertActive(); const s = scoped({});
@@ -408,9 +408,13 @@ const RPC = {
     assertActive(); if (!(allows('user_management') || allows('target_management'))) deny('Not authorised');
     return { salespersons: [...new Set(DB.shipments.map((s) => s.salesperson_name).filter(Boolean))].sort(), hubs: [...new Set(DB.shipments.map((s) => s.origin_hub_code).filter(Boolean))].sort() };
   },
+  set_default_password({ p_password }) { if (!isAdmin()) deny('Only ADMIN can change the default password'); if (!p_password || p_password.length < 8 || !/[A-Za-z]/.test(p_password) || !/\d/.test(p_password)) throw new Error('Default password: at least 8 characters with letters and numbers');
+    DB.defaultPassword = { value: p_password, updated_at: new Date().toISOString() }; audit('SETTING_CHANGE', 'setting', 'default_password'); return null; },
+  default_password_info() { return DB.defaultPassword ? { is_set: true, updated_at: DB.defaultPassword.updated_at } : { is_set: false }; },
+  password_changed() { if (currentUser) currentUser.must_change_password = false; return null; },
   update_my_profile({ p }) {
     assertActive(); const o = me();
-    if (p.full_name) o.full_name = String(p.full_name).slice(0, 120); if ('mobile' in p) o.mobile = p.mobile; if ('avatar_url' in p) o.avatar_url = p.avatar_url;
+    if (p.full_name) o.full_name = String(p.full_name).slice(0, 120); if ('avatar_url' in p) o.avatar_url = p.avatar_url;   // mobile = login ID, admin only
     if (p.preferences) o.preferences = { ...o.preferences, ...p.preferences }; return { ...o };
   },
 
@@ -473,11 +477,12 @@ export function createDemoClient() {
     auth: {
       async getSession() { return { data: { session: currentUser ? { user: { id: currentUser.id, email: currentUser.email } } : null } }; },
       async signInWithPassword({ email, password }) {
-        await wait(250); const p = DB.profiles.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
+        await wait(250); const p = DB.profiles.find((x) => (x.login_email || x.email || '').toLowerCase() === String(email).toLowerCase());
         if (!p || DB.passwords[p.id] !== password) return { data: null, error: { message: 'Invalid login credentials' } };
         currentUser = p; try { sessionStorage.setItem('skynet_demo_uid', p.id); } catch (_) { /* ignore */ }
-        return { data: { session: { user: { id: p.id, email: p.email } } }, error: null };
+        return { data: { session: { user: { id: p.id, email: p.login_email || p.email } } }, error: null };
       },
+      async getUser() { return { data: { user: currentUser ? { id: currentUser.id, email: currentUser.login_email || currentUser.email } : null }, error: null }; },
       async signOut() { currentUser = null; try { sessionStorage.removeItem('skynet_demo_uid'); } catch (_) { /* ignore */ } listeners.forEach((f) => f('SIGNED_OUT')); return { error: null }; },
       onAuthStateChange(cb) { listeners.push(cb); return { data: { subscription: { unsubscribe() {} } } }; },
       async resetPasswordForEmail() { await wait(200); return { error: null }; },
@@ -496,16 +501,31 @@ export function createDemoClient() {
       await wait(200);
       try {
         if (!isAdmin() && !allows('user_management')) deny('Not authorised');
+        if (body.action === 'reset_default') {
+          if (!isAdmin()) throw new Error('Only ADMIN can reset passwords to the default');
+          if (!DB.defaultPassword) throw new Error('Set the default password first (Application Settings → Default password)');
+          const t = DB.profiles.filter((p) => p.id !== me().id && (body.all || p.id === body.user_id || (body.user_ids || []).includes(p.id)));
+          t.forEach((p) => { DB.passwords[p.id] = DB.defaultPassword.value; p.must_change_password = body.force_change !== false; });
+          audit('USER_PASSWORD_RESET', 'user', body.all ? 'ALL' : body.user_id, null, { to_default: true, count: t.length }); return { data: { ok: true, count: t.length, failed: [] }, error: null };
+        }
         if (body.action === 'create') {
-          if (DB.profiles.some((p) => p.email.toLowerCase() === body.email.toLowerCase())) throw new Error('A user with this e-mail already exists');
+          const mob = String(body.mobile || '').replace(/\D/g, '').slice(-10);
+          if (mob.length !== 10) throw new Error('A valid 10-digit mobile number is required (it is the login ID)');
+          if (DB.profiles.some((p) => String(p.mobile || '').replace(/\D/g, '').slice(-10) === mob)) throw new Error('This mobile number is already used by another user');
+          const email = String(body.email || '').trim().toLowerCase();
+          if (body.invite && !email) throw new Error('An e-mail address is needed to send an invitation');
+          const taken = !email || DB.profiles.some((p) => (p.login_email || p.email || '').toLowerCase() === email);
+          if (body.invite && taken) throw new Error('A user with this e-mail already exists');
+          let pw = body.password;
+          if (body.use_default) { if (!DB.defaultPassword) throw new Error('Set the default password first (Application Settings → Default password)'); pw = DB.defaultPassword.value; }
           const id = 'u-' + Math.random().toString(36).slice(2, 8);
-          DB.profiles.push({ id, username: body.username || null, full_name: body.full_name, email: body.email, mobile: body.mobile || null, role: body.role || 'sales', assigned_hubs: body.assigned_hubs || [], salesperson_names: body.salesperson_names || [], team_salespersons: body.team_salespersons || [], avatar_url: null, is_active: body.is_active !== false, preferences: {}, created_at: new Date().toISOString() });
-          DB.passwords[id] = body.password || 'Invite@123';
+          DB.profiles.push({ id, username: body.username || null, full_name: body.full_name, email: email || null, login_email: taken ? `m${mob}@skynet-users.example.com` : email, mobile: mob, role: body.role || 'sales', assigned_hubs: body.assigned_hubs || [], salesperson_names: body.salesperson_names || [], team_salespersons: body.team_salespersons || [], avatar_url: null, is_active: body.is_active !== false, preferences: {}, must_change_password: !body.invite, created_at: new Date().toISOString() });
+          DB.passwords[id] = pw || 'Invite@123';
           if (body.permissions) RPC.admin_update_user({ p_id: id, p: {}, p_perms: body.permissions });
           audit('USER_CREATE', 'user', id, null, { email: body.email, role: body.role }); return { data: { id }, error: null };
         }
         if (body.action === 'delete') { if (body.user_id === me().id) throw new Error('You cannot delete yourself'); DB.profiles = DB.profiles.filter((p) => p.id !== body.user_id); audit('USER_DELETE', 'user', body.user_id); return { data: { ok: true }, error: null }; }
-        if (body.action === 'set_password') { DB.passwords[body.user_id] = body.password; audit('USER_PASSWORD_RESET', 'user', body.user_id); return { data: { ok: true }, error: null }; }
+        if (body.action === 'set_password') { DB.passwords[body.user_id] = body.password; const tp = DB.profiles.find((x) => x.id === body.user_id); if (tp) tp.must_change_password = body.force_change === true; audit('USER_PASSWORD_RESET', 'user', body.user_id); return { data: { ok: true }, error: null }; }
         if (body.action === 'set_active') { const p = DB.profiles.find((x) => x.id === body.user_id); p.is_active = !!body.is_active; audit('USER_UPDATE', 'user', body.user_id, null, { is_active: p.is_active }); return { data: { ok: true }, error: null }; }
         throw new Error('Unknown action');
       } catch (e) { return { data: null, error: { message: e.message, context: { json: async () => ({ error: e.message }) } } }; }

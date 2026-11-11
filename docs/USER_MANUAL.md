@@ -1,7 +1,9 @@
 # User manual – SKYNET Sales Intelligence
 
 ## Logging in
-* Enter your **User ID** or **e-mail** and password. Tick **Remember me** to stay logged in after closing the browser (leave it unticked on shared computers).
+* Enter your registered **mobile number** (10 digits; +91, spaces and dashes are ignored) and password. Several users may share one e-mail address – the mobile number identifies each person. On the first login with a default / admin-set password you must choose your own password.
+* Forgot your password? Ask the admin to use **Reset to default password** or **Set new password** in User Management.
+* Tick **Remember me** to stay logged in after closing the browser (leave it unticked on shared computers).
 * **Forgot password?** sends a secure reset link to your e-mail.
 * You are logged out automatically after the inactivity time set by the administrator (a warning appears 1 minute before).
 
@@ -37,7 +39,7 @@
 Rules: existing AWBs are updated, new ones inserted, nothing is deleted. If an AWB appears twice in a file, the row with the latest CREATED DATE is used (tie → the lower row). Admins can **Roll back** an import from *Import history*.
 
 ## Administration
-**User Management** – *Add user* (invitation e-mail or initial password), role, user ID, mobile, **assigned hubs** (manager scope), **salesperson identity** (the SALESMAN NAME value(s) the user is – required for Sales users), **team salespersons** (manager), active/inactive and permissions. Each permission can stay on *Default* (role-based) or be overridden. Data scope = the most restrictive of Customer / Shipment / Salesperson visibility:
+**User Management** – *Add user* with a **mobile number (login ID, unique)**, optional e-mail (may be shared), and the **default password** (set once in Application Settings → Default password), a custom password or an invitation e-mail. *Reset to default password* works per user or for all users at once. Role, user ID, **assigned hubs** (manager scope), **salesperson identity** (the SALESMAN NAME value(s) the user is – required for Sales users), **team salespersons** (manager), active/inactive and permissions. Each permission can stay on *Default* (role-based) or be overridden. Data scope = the most restrictive of Customer / Shipment / Salesperson visibility:
 * *All* – everything; *Assigned* – assigned hubs + team salespersons + own; *Own* – only AWBs where SALESMAN NAME is the user’s identity.
 Revenue / Weight visibility = *Deny* hides those numbers everywhere (shown as “Restricted”). Export users downloads non-sensitive details only – passwords are never stored or exported.
 
@@ -45,7 +47,7 @@ Revenue / Weight visibility = *Deny* hides those numbers everywhere (shown as �
 
 **Audit Logs** – searchable history of hold changes, imports, rollbacks, user, target and setting changes; exportable.
 
-**Application Settings** – company name, auto-logout minutes, table page size, User-ID login on/off, import batch size, max upload size, billing currency and approved exchange rates, saved column mappings.
+**Application Settings** – default password (stored only on the server), company name, auto-logout minutes, table page size, User-ID login on/off, import batch size, max upload size, billing currency and approved exchange rates, saved column mappings.
 
 ## My Profile
 Change name, mobile, photo (PNG/JPG/WEBP up to 2 MB), e-mail (confirmation link required) and password (current password required). Your permissions are listed at the bottom.

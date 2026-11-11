@@ -146,15 +146,16 @@ export function errMsg(e) {
 // ---------- Modal & drawer ----------
 export function closeOverlays() { $$('.overlay,.modal,.drawer').forEach((x) => x.remove()); document.removeEventListener('keydown', escClose); }
 function escClose(e) { if (e.key === 'Escape') closeOverlays(); }
-export function modal({ title, body, foot = '', wide = false, onMount }) {
+export function modal({ title, body, foot = '', wide = false, onMount, locked = false }) {
   closeOverlays();
-  const ov = document.createElement('div'); ov.className = 'overlay'; ov.addEventListener('click', closeOverlays);
+  const ov = document.createElement('div'); ov.className = 'overlay'; if (!locked) ov.addEventListener('click', closeOverlays);
   const m = document.createElement('div'); m.className = 'modal' + (wide ? ' wide' : ''); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
   setHTML(m, html`<div class="modal-head"><h2>${title}</h2><span class="top-spacer"></span>
     <button class="btn btn-ghost icon-btn" data-close aria-label="Close"><i data-lucide="x"></i></button></div>
     <div class="modal-body">${raw(body)}</div>${raw(foot ? '<div class="modal-foot">' + foot + '</div>' : '')}`);
   m.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeOverlays));
-  document.body.append(ov, m); document.addEventListener('keydown', escClose);
+  if (locked) m.querySelectorAll('[data-close]').forEach((b) => b.remove());
+  document.body.append(ov, m); if (!locked) document.addEventListener('keydown', escClose);
   if (onMount) onMount(m);
   const f = m.querySelector('input,select,textarea,button.btn-primary'); if (f) setTimeout(() => f.focus(), 30);
   return m;

@@ -17,7 +17,7 @@ export async function render(root) {
   const [users, lk] = await Promise.all([rpc('admin_list_users'), rpc('get_salesperson_names').catch(() => ({ salespersons: [], hubs: [] }))]);
   lookups = lk;
   root.innerHTML = panel({ title: 'Users', sub: `${users.length} accounts · roles, data scope and page permissions`,
-    tools: `<button class="btn" id="u-exp"><i data-lucide="download"></i>Export users</button><button class="btn btn-primary" id="u-add"><i data-lucide="user-plus"></i>Add user</button>`,
+    tools: `<button class="btn" id="u-exp"><i data-lucide="download"></i>Export users</button>${isAdmin() ? '<button class="btn" id="u-resetall"><i data-lucide="key-round"></i>Reset all to default password</button>' : ''}<button class="btn btn-primary" id="u-add"><i data-lucide="user-plus"></i>Add user</button>`,
     body: `<div class="table-tools"><div class="input-icon grow"><i data-lucide="search"></i><input class="input" id="u-q" placeholder="Search name, user ID or e-mail"></div>
       <select class="select" id="u-role" style="width:170px"><option value="">All roles</option><option value="admin">Admin</option><option value="manager">Manager</option><option value="sales">Sales</option></select></div><div id="u-tbl"></div>` });
   const draw = () => {
@@ -36,6 +36,14 @@ export async function render(root) {
   root.querySelector('#u-q').addEventListener('input', debounce(draw, 200));
   root.querySelector('#u-role').addEventListener('change', draw);
   root.querySelector('#u-add').addEventListener('click', () => userForm(null, () => render(root)));
+  root.querySelector('#u-resetall')?.addEventListener('click', async () => {
+    const n_ = users.filter((u) => u.id !== profile().id).length;
+    if (!(await confirmDialog('Reset all passwords',
+      `Set the DEFAULT password for all ${n_} other users (your own password is not changed)? Everyone will have to choose a new personal password at their next login.`, 'Reset all', true))) return;
+    try { const r = await invokeAdmin('reset_default', { all: true });
+      toast(`${r.count} users reset to the default password.` + (r.failed?.length ? ` ${r.failed.length} failed: ${r.failed.join('; ')}` : ''), r.failed?.length ? 'err' : 'ok', 9000); render(root);
+    } catch (e) { toast(errMsg(e), 'err', 8000); }
+  });
   root.querySelector('#u-exp').addEventListener('click', () => exportExcel('SKYNET_Users', [{ name: 'Users', rows: users, columns: [
     { key: 'full_name', label: 'Full Name', type: 'text' }, { key: 'username', label: 'User ID', type: 'text' }, { key: 'email', label: 'E-mail', type: 'text' },
     { key: 'mobile', label: 'Mobile', type: 'text' }, { key: 'role', label: 'Role', type: 'text' }, { key: 'assigned_hubs', label: 'Assigned Hubs', type: 'text', get: (u) => (u.assigned_hubs || []).join(', ') },
@@ -68,8 +76,9 @@ function userForm(u, onDone) {
         <label class="field"><span>Status</span><select class="select" id="f-active"><option value="1" ${u.is_active ? 'selected' : ''}>Active</option><option value="0" ${u.is_active ? '' : 'selected'}>Inactive</option></select></label>
       </div>
       ${isNew ? `<div class="grid g-2"><div class="field"><span style="font-size:12.5px;color:var(--text-2)">Login setup</span>
-          <div class="seg" id="f-mode"><button type="button" class="on" data-v="password">Set initial password</button><button type="button" data-v="invite">Send invitation e-mail</button></div></div>
-          <label class="field" id="f-pw-wrap"><span>Initial password (min 8, letters + numbers)</span><input class="input" id="f-pw" type="password" autocomplete="new-password"></label></div>` : ''}
+          <div class="seg" id="f-mode"><button type="button" class="on" data-v="default">Default password</button><button type="button" data-v="password">Custom password</button><button type="button" data-v="invite">Invitation e-mail</button></div>
+          <span class="muted" style="font-size:12px" id="f-mode-note">Uses the default password from Application Settings. The user must set a personal password at first login.</span></div>
+          <label class="field hidden" id="f-pw-wrap"><span>Initial password (min 8, letters + numbers)</span><input class="input" id="f-pw" type="password" autocomplete="new-password"></label></div>` : ''}
       <div class="section-title">Data mapping</div>
       <div class="grid g-3">
         <div><span style="font-size:12.5px;color:var(--text-2)">Assigned hub(s) – manager hub scope</span>${checkList('hubs', lookups.hubs, u.assigned_hubs || [], 'Filter hubs')}</div>
@@ -80,6 +89,7 @@ function userForm(u, onDone) {
       <div class="perm-grid" id="f-perms">${permRow(u.role)}</div>
       ${!isNew ? `<div class="section-title">Account actions</div><div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" id="f-setpw" type="button"><i data-lucide="key-round"></i>Set new password</button>
+        ${isAdmin() && u.id !== me.id ? '<button class="btn" id="f-defpw" type="button"><i data-lucide="rotate-ccw"></i>Reset to default password</button>' : ''}
         ${u.id !== me.id ? '<button class="btn btn-danger" id="f-del" type="button"><i data-lucide="trash-2"></i>Delete user</button>' : ''}</div>` : ''}`,
     foot: `<button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="f-save"><i data-lucide="save"></i>${isNew ? 'Create user' : 'Save changes'}</button>` });
   icons(m);
@@ -87,10 +97,18 @@ function userForm(u, onDone) {
     const q = inp.value.toLowerCase(); m.querySelectorAll(`[data-list="${inp.dataset.filter}"] label`).forEach((l) => { l.style.display = l.textContent.toLowerCase().includes(q) ? 'flex' : 'none'; });
   }));
   m.querySelector('#f-role').addEventListener('change', (e) => { u.permission_overrides = collectPerms(m); setHTML(m.querySelector('#f-perms'), raw(permRow(e.target.value))); });
-  let mode = 'password';
+  let mode = 'default';
+  const NOTES = { default: 'Uses the default password from Application Settings. The user must set a personal password at first login.',
+    password: 'You type the first password. The user must change it at first login.', invite: 'An e-mail with a secure link is sent – needs the user\'s own e-mail address.' };
   m.querySelector('#f-mode')?.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.v;
-    m.querySelectorAll('#f-mode button').forEach((x) => x.classList.toggle('on', x === b)); m.querySelector('#f-pw-wrap').classList.toggle('hidden', mode !== 'password'); });
+    m.querySelectorAll('#f-mode button').forEach((x) => x.classList.toggle('on', x === b)); m.querySelector('#f-pw-wrap').classList.toggle('hidden', mode !== 'password');
+    m.querySelector('#f-mode-note').textContent = NOTES[mode]; });
   m.querySelector('#f-setpw')?.addEventListener('click', () => setPassword(u));
+  m.querySelector('#f-defpw')?.addEventListener('click', async () => {
+    if (!(await confirmDialog('Reset to default password', `Set the default password for ${u.full_name || u.mobile}? They must choose a new password at next login.`, 'Reset', false))) return;
+    try { const r = await invokeAdmin('reset_default', { user_id: u.id }); if (r.failed?.length) throw new Error(r.failed[0]); toast('Password reset to the default.', 'ok'); }
+    catch (e) { toast(errMsg(e), 'err', 8000); }
+  });
   m.querySelector('#f-del')?.addEventListener('click', async () => {
     if (!(await confirmDialog('Delete user', `Permanently delete ${u.full_name || u.email}? Their login is removed; audit history is kept. Consider "Inactive" instead.`, 'Delete user', true))) return;
     try { await invokeAdmin('delete', { user_id: u.id }); toast('User deleted.', 'ok'); onDone(); } catch (e) { toast(errMsg(e), 'err'); }
@@ -113,8 +131,8 @@ function userForm(u, onDone) {
         if (mode === 'invite' && !email) return toast('An invitation needs an e-mail address – or choose "Set initial password".', 'err');
         const password = mode === 'password' ? m.querySelector('#f-pw').value : null;
         if (mode === 'password' && (!password || password.length < 8 || !/\d/.test(password) || !/[A-Za-z]/.test(password))) return toast('Password: min 8 characters with letters and numbers.', 'err');
-        await invokeAdmin('create', { email, password, invite: mode === 'invite', redirect_to: location.origin + location.pathname, ...p, permissions: perms });
-        toast(mode === 'invite' ? `Invitation sent to ${email}.` : `User created – signs in with mobile ${p.mobile} and the password you set.`, 'ok', 7000);
+        await invokeAdmin('create', { email, password, use_default: mode === 'default', invite: mode === 'invite', redirect_to: location.origin + location.pathname, ...p, permissions: perms });
+        toast(mode === 'invite' ? `Invitation sent to ${email}.` : `User created – signs in with mobile ${p.mobile} and the ${mode === 'default' ? 'default' : 'given'} password (must change it at first login).`, 'ok', 8000);
       } else {
         await rpc('admin_update_user', { p_id: u.id, p, p_perms: perms });
         if (u.is_active !== p.is_active) { try { await invokeAdmin('set_active', { user_id: u.id, is_active: p.is_active }); } catch (_) { /* profile flag already blocks access */ } }
@@ -128,13 +146,14 @@ function collectPerms(m) { const o = {}; m.querySelectorAll('[data-perm]').forEa
 
 function setPassword(u) {
   const m = modal({ title: 'Set new password – ' + (u.full_name || u.email),
-    body: `<p class="muted">The user can also reset it themselves with "Forgot password". The password is sent directly to Supabase Auth and never stored by the app.</p>
-      <label class="field"><span>New password</span><input class="input" id="sp-pw" type="password" autocomplete="new-password"></label>`,
+    body: `<p class="muted">The password is sent directly to Supabase Auth and never stored by the app.</p>
+      <label class="field"><span>New password</span><input class="input" id="sp-pw" type="password" autocomplete="new-password"></label>
+      <label class="check"><input type="checkbox" id="sp-force" checked> User must change it at next login</label>`,
     foot: `<button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="sp-go">Set password</button>` });
   m.querySelector('#sp-go').onclick = async () => {
     const pw = m.querySelector('#sp-pw').value;
     if (pw.length < 8 || !/\d/.test(pw) || !/[A-Za-z]/.test(pw)) return toast('Password: min 8 characters with letters and numbers.', 'err');
-    try { await invokeAdmin('set_password', { user_id: u.id, password: pw }); closeOverlays(); toast('Password updated.', 'ok'); } catch (e) { toast(errMsg(e), 'err'); }
+    try { await invokeAdmin('set_password', { user_id: u.id, password: pw, force_change: m.querySelector('#sp-force').checked }); closeOverlays(); toast('Password updated.', 'ok'); } catch (e) { toast(errMsg(e), 'err'); }
   };
 }
 export { isDemo };

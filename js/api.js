@@ -54,9 +54,10 @@ export async function invokeAdmin(action, payload) {
   try {
     const { data, error } = await client.functions.invoke(CONFIG.ADMIN_USERS_FUNCTION, { body: { action, ...payload } });
     if (error) {
-      let msg = error.message;
-      try { const ctx = await error.context?.json?.(); if (ctx?.error) msg = ctx.error; } catch (_) { /* ignore */ }
-      if (/Failed to send a request|404|not found/i.test(msg || '')) {
+      let msg = error.message, fromFn = false;
+      try { const ctx = await error.context?.json?.(); if (ctx?.error) { msg = ctx.error; fromFn = true; } } catch (_) { /* ignore */ }
+      // only a missing / unreachable function – not a "User not found" answer from the function itself
+      if (!fromFn && (/Failed to send a request/i.test(msg || '') || error.context?.status === 404)) {
         msg = 'The "admin-users" Edge Function is not deployed yet. See docs/SUPABASE_SETUP.md, step 6.';
       }
       throw new Error(msg);
